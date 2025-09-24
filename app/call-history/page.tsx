@@ -109,7 +109,10 @@ export default function CallHistory() {
   const getCallTypeDisplay = (call: CallRecord) => {
     if (call.isChat) {
       return (
-        <button className="text-primary hover:text-primary-hover underline">
+        <button 
+          className="text-primary hover:text-primary-hover underline"
+          onClick={() => setSelectedCall(call)}
+        >
           View Chat
         </button>
       );
