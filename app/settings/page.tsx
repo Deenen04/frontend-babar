@@ -97,7 +97,7 @@ export default function Settings() {
                 type="text"
                 value={digit}
                 onChange={(e) => handleVerificationInput(index, e.target.value)}
-                className="w-16 h-16 text-center text-2xl font-bold border-2 border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-16 h-16 text-center text-2xl font-bold text-black border-2 border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                 maxLength={1}
               />
             ))}
@@ -133,7 +133,7 @@ export default function Settings() {
                   type={showPasswords.old ? 'text' : 'password'}
                   value={passwords.old}
                   onChange={(e) => setPasswords(prev => ({ ...prev, old: e.target.value }))}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  className="w-full px-3 py-3 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                   placeholder="••••••••••••"
                 />
                 <button
@@ -155,7 +155,7 @@ export default function Settings() {
                   type={showPasswords.new ? 'text' : 'password'}
                   value={passwords.new}
                   onChange={(e) => setPasswords(prev => ({ ...prev, new: e.target.value }))}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  className="w-full px-3 py-3 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                   placeholder="••••••••••••"
                 />
                 <button
@@ -177,7 +177,7 @@ export default function Settings() {
                   type={showPasswords.confirm ? 'text' : 'password'}
                   value={passwords.confirm}
                   onChange={(e) => setPasswords(prev => ({ ...prev, confirm: e.target.value }))}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  className="w-full px-3 py-3 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                   placeholder="••••••••••••"
                 />
                 <button
@@ -255,7 +255,7 @@ export default function Settings() {
               type="text"
               value={formData.accountName}
               onChange={(e) => setFormData(prev => ({ ...prev, accountName: e.target.value }))}
-              className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
             />
           </div>
 
@@ -267,7 +267,7 @@ export default function Settings() {
               type="email"
               value={formData.email}
               onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-              className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
             />
           </div>
 
@@ -280,7 +280,7 @@ export default function Settings() {
               value={formData.clinicName}
               onChange={(e) => setFormData(prev => ({ ...prev, clinicName: e.target.value }))}
               placeholder="Clinic Name"
-              className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
             />
           </div>
         </div>

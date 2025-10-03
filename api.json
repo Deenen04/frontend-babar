@@ -1,0 +1,1071 @@
+{
+  "api_title": "Clinic API",
+  "version": "1.0",
+  "endpoints": [
+    {
+      "resource": "Users",
+      "routes": [
+        {
+          "name": "List Users",
+          "method": "GET",
+          "path": "/users",
+          "request_body": null,
+          "response": [
+            {
+              "id": "uuid",
+              "email": "string",
+              "password_hash": "string",
+              "first_name": "string",
+              "last_name": "string",
+              "role": "string",
+              "is_active": true,
+              "created_at": "timestamp",
+              "updated_at": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "Get User",
+          "method": "GET",
+          "path": "/users/{user_id}",
+          "request_body": null,
+          "response": {
+            "id": "uuid",
+            "email": "string",
+            "password_hash": "string",
+            "first_name": "string",
+            "last_name": "string",
+            "role": "string",
+            "is_active": true,
+            "created_at": "timestamp",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Create User",
+          "method": "POST",
+          "path": "/users",
+          "request_body": {
+            "email": "string",
+            "password_hash": "string",
+            "first_name": "string",
+            "last_name": "string",
+            "role": "string",
+            "is_active": true
+          },
+          "response": {
+            "id": "uuid",
+            "email": "string",
+            "password_hash": "string",
+            "first_name": "string",
+            "last_name": "string",
+            "role": "string",
+            "is_active": true,
+            "created_at": "timestamp",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Update User",
+          "method": "PUT",
+          "path": "/users/{user_id}",
+          "request_body": {
+            "email": "string",
+            "password_hash": "string",
+            "first_name": "string",
+            "last_name": "string",
+            "role": "string",
+            "is_active": true
+          },
+          "response": {
+            "id": "uuid",
+            "email": "string",
+            "password_hash": "string",
+            "first_name": "string",
+            "last_name": "string",
+            "role": "string",
+            "is_active": true,
+            "created_at": "timestamp",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Delete User",
+          "method": "DELETE",
+          "path": "/users/{user_id}",
+          "request_body": null,
+          "response": {
+            "message": "User deactivated"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "Patients",
+      "routes": [
+        {
+          "name": "List Patients",
+          "method": "GET",
+          "path": "/patients",
+          "request_body": null,
+          "response": [
+            {
+              "id": "uuid",
+              "first_name": "string",
+              "last_name": "string",
+              "date_of_birth": "date|null",
+              "email": "string",
+              "phone_number": "string",
+              "city": "string|null",
+              "state": "string|null",
+              "country": "string|null",
+              "is_active": true,
+              "created_at": "timestamp",
+              "updated_at": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "Get Patient",
+          "method": "GET",
+          "path": "/patients/{patient_id}",
+          "request_body": null,
+          "response": {
+            "id": "uuid",
+            "first_name": "string",
+            "last_name": "string",
+            "date_of_birth": "date|null",
+            "email": "string",
+            "phone_number": "string",
+            "is_active": true,
+            "created_at": "timestamp",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Create Patient",
+          "method": "POST",
+          "path": "/patients",
+          "request_body": {
+            "first_name": "string",
+            "last_name": "string",
+            "email": "string",
+            "phone_number": "string",
+            "date_of_birth": "date",
+            "address": "string",
+            "is_active": true
+          },
+          "response": {
+            "id": "uuid",
+            "first_name": "string",
+            "last_name": "string",
+            "email": "string",
+            "phone_number": "string",
+            "is_active": true,
+            "created_at": "timestamp",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Update Patient",
+          "method": "PUT",
+          "path": "/patients/{patient_id}",
+          "request_body": {
+            "first_name": "string",
+            "last_name": "string",
+            "email": "string",
+            "phone_number": "string",
+            "is_active": true
+          },
+          "response": {
+            "id": "uuid",
+            "first_name": "string",
+            "last_name": "string",
+            "email": "string",
+            "phone_number": "string",
+            "is_active": true,
+            "created_at": "timestamp",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Delete Patient",
+          "method": "DELETE",
+          "path": "/patients/{patient_id}",
+          "request_body": null,
+          "response": {
+            "message": "Patient deactivated"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "Practitioners",
+      "routes": [
+        {
+          "name": "List Practitioners",
+          "method": "GET",
+          "path": "/practitioners",
+          "request_body": null,
+          "response": [
+            {
+              "id": "uuid",
+              "user_id": "uuid",
+              "first_name": "string",
+              "last_name": "string",
+              "title": "string",
+              "specialization": "string",
+              "license_number": "string|null",
+              "phone_number": "string|null",
+              "email": "string|null",
+              "is_active": true,
+              "created_at": "timestamp",
+              "updated_at": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "Get Practitioner",
+          "method": "GET",
+          "path": "/practitioners/{practitioner_id}",
+          "request_body": null,
+          "response": {
+            "id": "uuid",
+            "user_id": "uuid",
+            "first_name": "string",
+            "last_name": "string",
+            "title": "string",
+            "specialization": "string",
+            "license_number": "string|null",
+            "phone_number": "string|null",
+            "email": "string|null",
+            "is_active": true,
+            "created_at": "timestamp",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Create Practitioner",
+          "method": "POST",
+          "path": "/practitioners",
+          "request_body": {
+            "user_id": "uuid",
+            "first_name": "string",
+            "last_name": "string",
+            "title": "string",
+            "specialization": "string",
+            "is_active": true
+          },
+          "response": {
+            "id": "uuid",
+            "user_id": "uuid",
+            "first_name": "string",
+            "last_name": "string",
+            "title": "string",
+            "specialization": "string",
+            "is_active": true,
+            "created_at": "timestamp",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Update Practitioner",
+          "method": "PUT",
+          "path": "/practitioners/{practitioner_id}",
+          "request_body": {
+            "first_name": "string",
+            "last_name": "string",
+            "title": "string",
+            "specialization": "string",
+            "is_active": true
+          },
+          "response": {
+            "id": "uuid",
+            "user_id": "uuid",
+            "first_name": "string",
+            "last_name": "string",
+            "title": "string",
+            "specialization": "string",
+            "is_active": true,
+            "created_at": "timestamp",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Delete Practitioner",
+          "method": "DELETE",
+          "path": "/practitioners/{practitioner_id}",
+          "request_body": null,
+          "response": {
+            "message": "Practitioner deactivated"
+          }
+        }
+      ]
+    },
+    {
+      "resource": "Appointments",
+      "routes": [
+        {
+          "name": "List Appointments",
+          "method": "GET",
+          "path": "/appointments",
+          "query_params": ["status", "patient_phone", "practitioner_id", "date"],
+          "request_body": null,
+          "response": [
+            {
+              "id": "uuid",
+              "patient_phone": "string|null",
+              "practitioner_id": "uuid",
+              "appointment_type_id": "uuid",
+              "appointment_date": "date",
+              "start_time": "time",
+              "end_time": "time",
+              "status": "string",
+              "notes": "string|null",
+              "created_by": "string",
+              "created_at": "timestamp",
+              "updated_at": "timestamp",
+              "call_id": "uuid|null"
+            }
+          ]
+        },
+        {
+          "name": "Get Appointment",
+          "method": "GET",
+          "path": "/appointments/{appointment_id}",
+          "request_body": null,
+          "response": {
+            "id": "uuid",
+            "patient_phone": "string|null",
+            "practitioner_id": "uuid",
+            "appointment_type_id": "uuid",
+            "appointment_date": "date",
+            "start_time": "time",
+            "end_time": "time",
+            "status": "string",
+            "notes": "string|null",
+            "created_by": "string",
+            "created_at": "timestamp",
+            "updated_at": "timestamp",
+            "call_id": "uuid|null"
+          }
+        },
+        {
+          "name": "Create Appointment",
+          "method": "POST",
+          "path": "/appointments",
+          "request_body": {
+            "patient_phone": "string|null",
+            "practitioner_id": "uuid",
+            "appointment_type_id": "uuid",
+            "appointment_date": "date",
+            "start_time": "time",
+            "end_time": "time",
+            "status": "string",
+            "notes": "string",
+            "created_by": "string"
+          },
+          "response": {
+            "id": "uuid",
+            "patient_phone": "string",
+            "practitioner_id": "uuid",
+            "appointment_type_id": "uuid",
+            "appointment_date": "date",
+            "start_time": "time",
+            "end_time": "time",
+            "status": "string",
+            "notes": "string",
+            "created_by": "string",
+            "created_at": "timestamp",
+            "updated_at": "timestamp",
+            "call_id": "uuid|null"
+          }
+        },
+        {
+          "name": "Update Appointment",
+          "method": "PUT",
+          "path": "/appointments/{appointment_id}",
+          "request_body": {
+            "patient_phone": "string",
+            "practitioner_id": "uuid",
+            "appointment_type_id": "uuid",
+            "appointment_date": "date",
+            "start_time": "time",
+            "end_time": "time",
+            "status": "string",
+            "notes": "string"
+          },
+          "response": {
+            "id": "uuid",
+            "patient_phone": "string",
+            "practitioner_id": "uuid",
+            "appointment_type_id": "uuid",
+            "appointment_date": "date",
+            "start_time": "time",
+            "end_time": "time",
+            "status": "string",
+            "notes": "string",
+            "created_by": "string",
+            "created_at": "timestamp",
+            "updated_at": "timestamp",
+            "call_id": "uuid|null"
+          }
+        },
+        {
+          "name": "Update Appointment Status",
+          "method": "PATCH",
+          "path": "/appointments/{appointment_id}/status",
+          "request_body": {
+            "status": "string"
+          },
+          "response": {
+            "id": "uuid",
+            "status": "string",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Delete Appointment",
+          "method": "DELETE",
+          "path": "/appointments/{appointment_id}",
+          "request_body": null,
+          "response": {
+            "message": "Appointment cancelled"
+          }
+        }
+      ]
+    },
+
+    {
+      "resource": "Appointment Types",
+      "routes": [
+        {
+          "name": "List Appointment Types",
+          "method": "GET",
+          "path": "/appointment-types",
+          "request_body": null,
+          "response": [
+            {
+              "id": "string",
+              "name": "string",
+              "description": "string",
+              "duration_minutes": "integer",
+              "color": "string",
+              "is_active": true,
+              "created_at": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "Get Appointment Type",
+          "method": "GET",
+          "path": "/appointment-types/{type_id}",
+          "request_body": null,
+          "response": {
+            "id": "string",
+            "name": "string",
+            "description": "string",
+            "duration_minutes": "integer",
+            "color": "string",
+            "is_active": true,
+            "created_at": "timestamp"
+          }
+        },
+        {
+          "name": "Create Appointment Type",
+          "method": "POST",
+          "path": "/appointment-types",
+          "request_body": {
+            "name": "string",
+            "description": "string",
+            "duration_minutes": "integer",
+            "color": "string",
+            "is_active": true
+          },
+          "response": {
+            "id": "string",
+            "name": "string",
+            "description": "string",
+            "duration_minutes": "integer",
+            "color": "string",
+            "is_active": true,
+            "created_at": "timestamp"
+          }
+        },
+        {
+          "name": "Update Appointment Type",
+          "method": "PUT",
+          "path": "/appointment-types/{type_id}",
+          "request_body": {
+            "description": "string",
+            "duration_minutes": "integer",
+            "color": "string",
+            "is_active": true
+          },
+          "response": {
+            "id": "string",
+            "name": "string",
+            "description": "string",
+            "duration_minutes": "integer",
+            "color": "string",
+            "is_active": true,
+            "created_at": "timestamp"
+          }
+        },
+        {
+          "name": "Delete Appointment Type",
+          "method": "DELETE",
+          "path": "/appointment-types/{type_id}",
+          "request_body": null,
+          "response": {
+            "message": "Appointment type deactivated"
+          }
+        }
+      ]
+    },
+
+    {
+      "resource": "Calls",
+      "routes": [
+        {
+          "name": "List Calls",
+          "method": "GET",
+          "path": "/calls",
+          "request_body": null,
+          "response": [
+            {
+              "id": "uuid",
+              "patient_id": "uuid|null",
+              "phone_number": "string",
+              "call_type": "string",
+              "call_status": "string",
+              "call_outcome": "string|null",
+              "start_time": "timestamp",
+              "end_time": "timestamp|null",
+              "duration_seconds": "integer",
+              "recording_url": "string|null",
+              "transcript": "string",
+              "ai_summary": "string",
+              "notes": "string",
+              "language": "string",
+              "created_at": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "Get Call",
+          "method": "GET",
+          "path": "/calls/{call_id}",
+          "request_body": null,
+          "response": {
+            "id": "uuid",
+            "patient_id": "uuid|null",
+            "phone_number": "string",
+            "call_type": "string",
+            "call_status": "string",
+            "call_outcome": "string|null",
+            "start_time": "timestamp",
+            "end_time": "timestamp|null",
+            "duration_seconds": "integer",
+            "recording_url": "string|null",
+            "transcript": "string",
+            "ai_summary": "string",
+            "notes": "string",
+            "language": "string",
+            "created_at": "timestamp"
+          }
+        },
+        {
+          "name": "Create Call",
+          "method": "POST",
+          "path": "/calls",
+          "request_body": {
+            "patient_id": "uuid",
+            "phone_number": "string",
+            "call_type": "string",
+            "call_status": "string",
+            "call_outcome": "string",
+            "start_time": "timestamp",
+            "end_time": "timestamp|null",
+            "duration_seconds": "integer",
+            "recording_url": "string",
+            "transcript": "string",
+            "ai_summary": "string",
+            "notes": "string",
+            "language": "string"
+          },
+          "response": {
+            "id": "uuid",
+            "patient_id": "uuid",
+            "phone_number": "string",
+            "call_type": "string",
+            "call_status": "string",
+            "call_outcome": "string",
+            "start_time": "timestamp",
+            "end_time": "timestamp|null",
+            "duration_seconds": "integer",
+            "recording_url": "string",
+            "transcript": "string",
+            "ai_summary": "string",
+            "notes": "string",
+            "language": "string",
+            "created_at": "timestamp"
+          }
+        },
+        {
+          "name": "Update Call",
+          "method": "PUT",
+          "path": "/calls/{call_id}",
+          "request_body": {
+            "call_status": "string",
+            "call_outcome": "string",
+            "end_time": "timestamp",
+            "transcript": "string",
+            "ai_summary": "string",
+            "notes": "string"
+          },
+          "response": {
+            "id": "uuid",
+            "call_status": "string",
+            "call_outcome": "string",
+            "end_time": "timestamp",
+            "transcript": "string",
+            "ai_summary": "string",
+            "notes": "string"
+          }
+        },
+        {
+          "name": "Delete Call",
+          "method": "DELETE",
+          "path": "/calls/{call_id}",
+          "request_body": null,
+          "response": {
+            "message": "Call deleted"
+          }
+        }
+      ]
+    },
+
+    {
+      "resource": "Reminders",
+      "routes": [
+        {
+          "name": "List Reminders",
+          "method": "GET",
+          "path": "/reminders",
+          "request_body": null,
+          "response": [
+            {
+              "id": "uuid",
+              "patient_id": "uuid",
+              "appointment_id": "uuid|null",
+              "call_id": "uuid|null",
+              "reminder_type": "string",
+              "title": "string",
+              "task_description": "string",
+              "due_date": "date",
+              "due_time": "time",
+              "priority": "string",
+              "status": "string",
+              "reminder_method": "string",
+              "source": "string",
+              "patient_phone": "string",
+              "created_by": "string",
+              "created_at": "timestamp",
+              "updated_at": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "Get Reminder",
+          "method": "GET",
+          "path": "/reminders/{reminder_id}",
+          "request_body": null,
+          "response": {
+            "id": "uuid",
+            "patient_id": "uuid",
+            "appointment_id": "uuid|null",
+            "call_id": "uuid|null",
+            "reminder_type": "string",
+            "title": "string",
+            "task_description": "string",
+            "due_date": "date",
+            "due_time": "time",
+            "priority": "string",
+            "status": "string",
+            "reminder_method": "string",
+            "source": "string",
+            "patient_phone": "string",
+            "created_by": "string",
+            "created_at": "timestamp",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Create Reminder",
+          "method": "POST",
+          "path": "/reminders",
+          "request_body": {
+            "patient_id": "uuid",
+            "appointment_id": "uuid",
+            "call_id": "uuid",
+            "reminder_type": "string",
+            "title": "string",
+            "task_description": "string",
+            "due_date": "date",
+            "due_time": "time",
+            "priority": "string",
+            "status": "string",
+            "reminder_method": "string",
+            "source": "string",
+            "patient_phone": "string",
+            "created_by": "string"
+          },
+          "response": {
+            "id": "uuid",
+            "patient_id": "uuid",
+            "appointment_id": "uuid",
+            "call_id": "uuid",
+            "reminder_type": "string",
+            "title": "string",
+            "task_description": "string",
+            "due_date": "date",
+            "due_time": "time",
+            "priority": "string",
+            "status": "string",
+            "reminder_method": "string",
+            "source": "string",
+            "patient_phone": "string",
+            "created_by": "string",
+            "created_at": "timestamp",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Update Reminder",
+          "method": "PUT",
+          "path": "/reminders/{reminder_id}",
+          "request_body": {
+            "title": "string",
+            "task_description": "string",
+            "status": "string"
+          },
+          "response": {
+            "id": "uuid",
+            "title": "string",
+            "task_description": "string",
+            "status": "string",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Delete Reminder",
+          "method": "DELETE",
+          "path": "/reminders/{reminder_id}",
+          "request_body": null,
+          "response": {
+            "message": "Reminder deleted"
+          }
+        }
+      ]
+    },
+
+    {
+      "resource": "Working Hours",
+      "routes": [
+        {
+          "name": "List Working Hours",
+          "method": "GET",
+          "path": "/working-hours",
+          "request_body": null,
+          "response": [
+            {
+              "id": "uuid",
+              "practitioner_id": "uuid",
+              "day_of_week": "string",
+              "start_time": "time",
+              "end_time": "time",
+              "is_active": true,
+              "created_at": "timestamp",
+              "updated_at": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "Get Working Hour",
+          "method": "GET",
+          "path": "/working-hours/{wh_id}",
+          "request_body": null,
+          "response": {
+            "id": "uuid",
+            "practitioner_id": "uuid",
+            "day_of_week": "string",
+            "start_time": "time",
+            "end_time": "time",
+            "is_active": true,
+            "created_at": "timestamp",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Create Working Hour",
+          "method": "POST",
+          "path": "/working-hours",
+          "request_body": {
+            "practitioner_id": "uuid",
+            "day_of_week": "string",
+            "start_time": "time",
+            "end_time": "time",
+            "is_active": true
+          },
+          "response": {
+            "id": "uuid",
+            "practitioner_id": "uuid",
+            "day_of_week": "string",
+            "start_time": "time",
+            "end_time": "time",
+            "is_active": true,
+            "created_at": "timestamp",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Update Working Hour",
+          "method": "PUT",
+          "path": "/working-hours/{wh_id}",
+          "request_body": {
+            "day_of_week": "string",
+            "start_time": "time",
+            "end_time": "time",
+            "is_active": true
+          },
+          "response": {
+            "id": "uuid",
+            "day_of_week": "string",
+            "start_time": "time",
+            "end_time": "time",
+            "is_active": true,
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Delete Working Hour",
+          "method": "DELETE",
+          "path": "/working-hours/{wh_id}",
+          "request_body": null,
+          "response": {
+            "message": "Working hour deleted"
+          }
+        }
+      ]
+    },
+
+    {
+      "resource": "System Settings",
+      "routes": [
+        {
+          "name": "List System Settings",
+          "method": "GET",
+          "path": "/system-settings",
+          "request_body": null,
+          "response": [
+            {
+              "id": "uuid",
+              "setting_key": "string",
+              "setting_value": "string",
+              "setting_type": "string",
+              "description": "string",
+              "is_user_configurable": true,
+              "updated_by": "string",
+              "updated_at": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "Get System Setting",
+          "method": "GET",
+          "path": "/system-settings/{setting_id}",
+          "request_body": null,
+          "response": {
+            "id": "uuid",
+            "setting_key": "string",
+            "setting_value": "string",
+            "setting_type": "string",
+            "description": "string",
+            "is_user_configurable": true,
+            "updated_by": "string",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Create System Setting",
+          "method": "POST",
+          "path": "/system-settings",
+          "request_body": {
+            "setting_key": "string",
+            "setting_value": "string",
+            "setting_type": "string",
+            "description": "string",
+            "is_user_configurable": true,
+            "updated_by": "string"
+          },
+          "response": {
+            "id": "uuid",
+            "setting_key": "string",
+            "setting_value": "string",
+            "setting_type": "string",
+            "description": "string",
+            "is_user_configurable": true,
+            "updated_by": "string",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Update System Setting",
+          "method": "PUT",
+          "path": "/system-settings/{setting_id}",
+          "request_body": {
+            "setting_value": "string",
+            "description": "string",
+            "is_user_configurable": true,
+            "updated_by": "string"
+          },
+          "response": {
+            "id": "uuid",
+            "setting_key": "string",
+            "setting_value": "string",
+            "description": "string",
+            "is_user_configurable": true,
+            "updated_by": "string",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Delete System Setting",
+          "method": "DELETE",
+          "path": "/system-settings/{setting_id}",
+          "request_body": null,
+          "response": {
+            "message": "System setting deleted"
+          }
+        }
+      ]
+    },
+
+    {
+      "resource": "User Settings",
+      "routes": [
+        {
+          "name": "List User Settings",
+          "method": "GET",
+          "path": "/user-settings",
+          "request_body": null,
+          "response": [
+            {
+              "id": "uuid",
+              "user_id": "uuid",
+              "setting_key": "string",
+              "setting_value": "string",
+              "updated_at": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "Get User Setting",
+          "method": "GET",
+          "path": "/user-settings/{setting_id}",
+          "request_body": null,
+          "response": {
+            "id": "uuid",
+            "user_id": "uuid",
+            "setting_key": "string",
+            "setting_value": "string",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Create User Setting",
+          "method": "POST",
+          "path": "/user-settings",
+          "request_body": {
+            "user_id": "uuid",
+            "setting_key": "string",
+            "setting_value": "string"
+          },
+          "response": {
+            "id": "uuid",
+            "user_id": "uuid",
+            "setting_key": "string",
+            "setting_value": "string",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Update User Setting",
+          "method": "PUT",
+          "path": "/user-settings/{setting_id}",
+          "request_body": {
+            "setting_value": "string"
+          },
+          "response": {
+            "id": "uuid",
+            "user_id": "uuid",
+            "setting_key": "string",
+            "setting_value": "string",
+            "updated_at": "timestamp"
+          }
+        },
+        {
+          "name": "Delete User Setting",
+          "method": "DELETE",
+          "path": "/user-settings/{setting_id}",
+          "request_body": null,
+          "response": {
+            "message": "User setting deleted"
+          }
+        }
+      ]
+    },
+
+    {
+      "resource": "Audit Log",
+      "routes": [
+        {
+          "name": "List Audit Log",
+          "method": "GET",
+          "path": "/audit-log",
+          "query_params": ["table"],
+          "request_body": null,
+          "response": [
+            {
+              "id": "uuid",
+              "table_name": "string",
+              "record_id": "uuid",
+              "action": "string",
+              "old_values": "jsonb",
+              "new_values": "jsonb",
+              "changed_by": "string",
+              "created_at": "timestamp"
+            }
+          ]
+        },
+        {
+          "name": "Get Audit Log Entry",
+          "method": "GET",
+          "path": "/audit-log/{log_id}",
+          "request_body": null,
+          "response": {
+            "id": "uuid",
+            "table_name": "string",
+            "record_id": "uuid",
+            "action": "string",
+            "old_values": "jsonb",
+            "new_values": "jsonb",
+            "changed_by": "string",
+            "created_at": "timestamp"
+          }
+        }
+      ]
+    }
+  ]
+}

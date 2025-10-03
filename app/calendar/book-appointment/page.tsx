@@ -93,7 +93,7 @@ export default function BookAppointment() {
                   value={bookingData.contactNumber}
                   onChange={(e) => setBookingData(prev => ({ ...prev, contactNumber: e.target.value }))}
                   placeholder="Enter Mobile Number"
-                  className="flex-1 px-3 py-2 border border-l-0 border-gray-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  className="flex-1 px-3 py-2 text-black border border-l-0 border-gray-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 />
               </div>
             </div>
@@ -107,7 +107,7 @@ export default function BookAppointment() {
                   type="text"
                   value={bookingData.dateOfBirth}
                   onChange={(e) => setBookingData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  className="w-full px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
