@@ -66,7 +66,7 @@ export default function Patients() {
       setError(null);
 
       // Create patient using API
-      const apiPatient = await patientsUtils.createFromForm(patient, 'current-user-id');
+      const apiPatient = await patientsUtils.createFromForm(patient, 'user-123');
 
       // Convert to UI format and add to local state
       const uiPatient = patientsUtils.formatForDisplay(apiPatient);

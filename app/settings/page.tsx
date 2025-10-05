@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { settingsApi, userSettingsApi, systemSettingsApi, type UserSetting } from '@/lib/api';
+import { usersApi, systemSettingsApi } from '@/lib/api';
 
 type ModalType = 'none' | 'resetConfirm' | 'verification' | 'resetForm' | 'success';
 
@@ -21,9 +21,8 @@ export default function Settings() {
     confirm: false
   });
   const [formData, setFormData] = useState({
-    accountName: 'Demo User',
-    email: 'demo@example.com',
-    clinicName: 'Demo Clinic'
+    accountName: '',
+    email: ''
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -36,24 +35,17 @@ export default function Settings() {
       setError(null);
 
       try {
-        // Load user settings
-        const userId = 'current-user-id'; // In a real app, get from auth context
-        const userSettings = await settingsApi.getUserProfile(userId);
-
-        // Convert user settings to form data
-        const settingsMap = userSettings.reduce((acc, setting) => {
-          acc[setting.setting_key] = setting.setting_value;
-          return acc;
-        }, {} as Record<string, string>);
+        // Load user profile
+        const userId = 'user-123';
+        const user = await usersApi.getById(userId);
 
         setFormData({
-          accountName: settingsMap.account_name || 'Demo User',
-          email: settingsMap.email || 'demo@example.com',
-          clinicName: settingsMap.clinic_name || 'Demo Clinic'
+          accountName: `${user.first_name} ${user.last_name}`,
+          email: user.email
         });
 
         // Load system settings to check AI bot status
-        const systemSettings = await settingsApi.getSystemConfig();
+        const systemSettings = await systemSettingsApi.getSystemSettings();
         const aiBotSetting = systemSettings.find(setting => setting.setting_key === 'ai_bot_enabled');
         if (aiBotSetting) {
           setAiBotEnabled(aiBotSetting.setting_value === 'true');
@@ -76,26 +68,29 @@ export default function Settings() {
       setSaving(true);
       setError(null);
 
-      const userId = 'current-user-id'; // In a real app, get from auth context
+      const userId = 'user-123';
 
-      // Save user profile settings
-      const userSettings = {
-        account_name: formData.accountName,
-        email: formData.email,
-        clinic_name: formData.clinicName,
-      };
-      await settingsApi.updateUserProfile(userId, userSettings);
+      // Split account name into first and last name
+      const nameParts = formData.accountName.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // Update user profile
+      await usersApi.update(userId, {
+        first_name: firstName,
+        last_name: lastName,
+        email: formData.email
+      });
 
       // Save AI bot system setting
-      const systemSettings = await settingsApi.getSystemConfig();
+      const systemSettings = await systemSettingsApi.getSystemSettings();
       const aiBotSetting = systemSettings.find(setting => setting.setting_key === 'ai_bot_enabled');
 
       if (aiBotSetting) {
-        await settingsApi.updateSystemConfig(
-          aiBotSetting.id,
-          aiBotEnabled.toString(),
-          userId
-        );
+        await systemSettingsApi.update(aiBotSetting.id, {
+          setting_value: aiBotEnabled.toString(),
+          updated_by: userId
+        });
       } else {
         // Create the AI bot setting if it doesn't exist
         await systemSettingsApi.create({
@@ -407,19 +402,6 @@ export default function Settings() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Clinic Name
-            </label>
-            <input
-              type="text"
-              value={formData.clinicName}
-              onChange={(e) => setFormData(prev => ({ ...prev, clinicName: e.target.value }))}
-              disabled={loading}
-              placeholder={loading ? "Loading..." : "Clinic Name"}
-              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary disabled:bg-gray-50 disabled:cursor-not-allowed"
-            />
-          </div>
         </div>
 
         {/* AI Bot Toggle */}

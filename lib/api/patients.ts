@@ -5,12 +5,20 @@ export interface Patient {
   id: string;
   first_name: string;
   last_name: string;
-  date_of_birth?: string;
-  email?: string;
+  date_of_birth: string | null;
+  email: string | null;
   phone_number: string;
-  city?: string;
-  state?: string;
-  country?: string;
+  phone_extension: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  country: string;
+  insurance_provider: string | null;
+  insurance_id: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  medical_notes: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -19,19 +27,40 @@ export interface Patient {
 export interface CreatePatientRequest {
   first_name: string;
   last_name: string;
-  email?: string;
+  date_of_birth?: string | null;
+  email?: string | null;
   phone_number: string;
-  date_of_birth?: string;
-  address?: string;
+  phone_extension?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
+  country?: string;
+  insurance_provider?: string | null;
+  insurance_id?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  medical_notes?: string | null;
   is_active: boolean;
 }
 
 export interface UpdatePatientRequest {
   first_name?: string;
   last_name?: string;
-  email?: string;
+  date_of_birth?: string | null;
+  email?: string | null;
   phone_number?: string;
-  date_of_birth?: string;
+  phone_extension?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
+  country?: string;
+  insurance_provider?: string | null;
+  insurance_id?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  medical_notes?: string | null;
   is_active?: boolean;
 }
 
@@ -122,17 +151,17 @@ export const patientsUtils = {
       id: patient.id,
       name: `${patient.first_name} ${patient.last_name}`,
       dateOfBirth: patient.date_of_birth || '',
-      ext: '+1', // Default country code, could be derived from phone
+      ext: patient.phone_extension || '+1', // Use phone_extension from API
       phoneNo: patient.phone_number,
-      insuranceProvider: '-', // Not in API, would need separate endpoint
-      insuranceId: '-', // Not in API, would need separate endpoint
+      insuranceProvider: patient.insurance_provider || '-',
+      insuranceId: patient.insurance_id || '-',
       email: patient.email || '',
-      address: `${patient.city || ''} ${patient.state || ''} ${patient.country || ''}`.trim() || '',
+      address: patient.address || `${patient.city || ''} ${patient.state || ''} ${patient.country || ''}`.trim() || '',
       gender: '', // Not in API
       age: patient.date_of_birth ? calculateAge(patient.date_of_birth) : undefined,
       contactNumber: patient.phone_number,
-      providerName: '-', // Not in API
-      note: '', // Not in API
+      providerName: patient.insurance_provider || '-',
+      note: patient.medical_notes || '',
     };
   },
 
@@ -147,10 +176,20 @@ export const patientsUtils = {
       return await patientsApi.create({
         first_name: firstName,
         last_name: lastName,
-        email: formData.email || '',
+        date_of_birth: formData.dateOfBirth || null,
+        email: formData.email || null,
         phone_number: formData.phoneNo,
-        date_of_birth: formData.dateOfBirth || '',
-        address: formData.address || '',
+        phone_extension: formData.ext || null,
+        address: formData.address || null,
+        city: null,
+        state: null,
+        zip_code: null,
+        country: "US", // Default country
+        insurance_provider: formData.providerName || null,
+        insurance_id: formData.insuranceId || null,
+        emergency_contact_name: null,
+        emergency_contact_phone: null,
+        medical_notes: null,
         is_active: true,
       });
     } catch (error) {
@@ -170,9 +209,20 @@ export const patientsUtils = {
       return await patientsApi.update(patientId, {
         first_name: firstName,
         last_name: lastName,
-        email: formData.email || '',
+        date_of_birth: formData.dateOfBirth || null,
+        email: formData.email || null,
         phone_number: formData.phoneNo,
-        date_of_birth: formData.dateOfBirth || '',
+        phone_extension: formData.ext || null,
+        address: formData.address || null,
+        city: null,
+        state: null,
+        zip_code: null,
+        country: "US",
+        insurance_provider: formData.providerName || null,
+        insurance_id: formData.insuranceId || null,
+        emergency_contact_name: null,
+        emergency_contact_phone: null,
+        medical_notes: null,
       });
     } catch (error) {
       console.error('Error updating patient from form:', error);

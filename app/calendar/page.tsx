@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
+import { appointmentsApi, appointmentTypesApi, type Appointment, type AppointmentType } from '@/lib/api';
 
 type ViewType = 'Day' | 'Week';
 type StaffType = 'Doctor' | 'Nurse' | 'Iron Infusion';
 
-interface Appointment {
+// UI-friendly appointment interface
+interface UIAppointment {
   id: string;
   title: string;
   startTime: string;
@@ -16,55 +18,6 @@ interface Appointment {
   type: StaffType;
   day?: number; // for week view
 }
-
-// Mock appointment data for MVP
-const MOCK_APPOINTMENTS: Appointment[] = [
-  {
-    id: '1',
-    title: 'Consultation',
-    startTime: '09:00 AM',
-    endTime: '09:40 AM',
-    patient: 'John Doe',
-    type: 'Doctor',
-    day: 11,
-  },
-  {
-    id: '2',
-    title: 'Check-up',
-    startTime: '10:00 AM',
-    endTime: '10:20 AM',
-    patient: 'Jane Smith',
-    type: 'Doctor',
-    day: 11,
-  },
-  {
-    id: '3',
-    title: 'Iron Infusion',
-    startTime: '02:00 PM',
-    endTime: '03:00 PM',
-    patient: 'Bob Wilson',
-    type: 'Iron Infusion',
-    day: 11,
-  },
-  {
-    id: '4',
-    title: 'Follow-up',
-    startTime: '11:00 AM',
-    endTime: '11:30 AM',
-    patient: 'Alice Johnson',
-    type: 'Nurse',
-    day: 10,
-  },
-  {
-    id: '5',
-    title: 'Consultation',
-    startTime: '03:00 PM',
-    endTime: '03:40 PM',
-    patient: 'Charlie Brown',
-    type: 'Doctor',
-    day: 12,
-  },
-];
 
 const timeSlots = [
   '09:00 AM', '09:20 AM', '09:40 AM', '10:00 AM', '10:20 AM', '10:40 AM',
@@ -80,20 +33,84 @@ export default function Calendar() {
   const [currentDate, setCurrentDate] = useState('Sep 11 2025');
   const [dateRange, setDateRange] = useState('Sep 9 - Sep 15, 2025');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointmentTypes, setAppointmentTypes] = useState<AppointmentType[]>([]);
+  const [uiAppointments, setUiAppointments] = useState<UIAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const staffTabs: StaffType[] = ['Doctor', 'Nurse', 'Iron Infusion'];
 
-  // Load mock appointments for MVP
+  // Load appointments and appointment types from API
   useEffect(() => {
-    setLoading(true);
-    setError(null);
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
 
-    // Simulate API delay
-    setTimeout(() => {
-      setAppointments(MOCK_APPOINTMENTS);
-      setLoading(false);
-    }, 1000);
+      try {
+        // Load appointment types first
+        const types = await appointmentTypesApi.getAppointmentTypes() || [];
+        setAppointmentTypes(types);
+
+        // Load appointments for the current week (you can adjust date range as needed)
+        const startDate = '2025-09-09';
+        const endDate = '2025-09-15';
+        const apiAppointments = await appointmentsApi.getAppointments();
+
+        // Filter by date range (in a real app, you'd pass date filters to the API)
+        const filteredAppointments = (apiAppointments || []).filter(appointment => {
+          const appointmentDate = appointment.appointment_date;
+          return appointmentDate >= startDate && appointmentDate <= endDate;
+        });
+
+        setAppointments(filteredAppointments);
+
+        // Convert API appointments to UI format
+        const uiAppointmentsData = filteredAppointments.map(appointment => {
+          const appointmentType = types.find(type => type.id === appointment.appointment_type_id);
+          const typeName = appointmentType?.name || 'Unknown';
+
+          // Map appointment type name to staff type
+          let staffType: StaffType = 'Doctor';
+          if (typeName.toLowerCase().includes('nurse')) {
+            staffType = 'Nurse';
+          } else if (typeName.toLowerCase().includes('infusion')) {
+            staffType = 'Iron Infusion';
+          }
+
+          // Format time to 12-hour format
+          const formatTime = (time: string) => {
+            const [hours, minutes] = time.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            return `${displayHour}:${minutes} ${ampm.toLowerCase()}`;
+          };
+
+          // Extract day from date for week view
+          const appointmentDate = new Date(appointment.appointment_date);
+          const dayOfMonth = appointmentDate.getDate();
+
+          return {
+            id: appointment.id,
+            title: typeName,
+            startTime: formatTime(appointment.start_time),
+            endTime: formatTime(appointment.end_time),
+            patient: appointment.patient_phone ? `Patient ${appointment.patient_phone}` : 'No Patient',
+            type: staffType,
+            day: dayOfMonth,
+          };
+        });
+
+        setUiAppointments(uiAppointmentsData);
+
+      } catch (err) {
+        console.error('Error loading calendar data:', err);
+        setError('Failed to load appointments. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
   const weekDays = [
@@ -107,10 +124,10 @@ export default function Calendar() {
   ];
 
   const DayView = () => {
-    // Filter appointments for the current day (Sep 11, 2025)
-    const todayAppointments = appointments.filter(apt => {
-      // For demo purposes, show appointments for day 11
-      return true; // We'll implement proper date filtering later
+    // Filter appointments for the current day and selected staff type
+    const todayAppointments = uiAppointments.filter(apt => {
+      // Filter by staff type
+      return apt.type === activeStaff;
     });
 
     return (
@@ -154,8 +171,8 @@ export default function Calendar() {
   };
 
   const WeekView = () => {
-    // Filter appointments for the week view
-    const weekAppointments = appointments.filter(apt => apt.day);
+    // Filter appointments for the week view and selected staff type
+    const weekAppointments = uiAppointments.filter(apt => apt.day && apt.type === activeStaff);
 
     return (
       <div>

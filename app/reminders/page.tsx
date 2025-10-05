@@ -56,7 +56,7 @@ export default function Reminders() {
       setError(null);
 
       // Update reminder status using API
-      await remindersUtils.updateReminderStatus(reminderId, 'completed', 'current-user-id');
+      await remindersUtils.updateReminderStatus(reminderId, 'completed', 'user-123');
 
       // Update local state
       setReminders(prev =>

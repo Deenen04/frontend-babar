@@ -165,7 +165,7 @@ export const remindersUtils = {
         reminder_method: 'System',
         source: 'Manual Entry',
         patient_phone: patientData.phone_number || '',
-        created_by: 'current-user-id', // Replace with actual user ID
+        created_by: 'user-123', // Default user ID
       });
     } catch (error) {
       console.error('Error creating reminder from patient:', error);

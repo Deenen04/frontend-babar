@@ -39,9 +39,9 @@ export default function Dashboard() {
       // Fetch appointments data using API caller
       const appointmentsData = await appointmentsApi.getAppointments();
 
-      // Count appointments booked (assuming 'booked' or 'confirmed' status)
-      const bookedCount = appointmentsData.filter((appointment: Appointment) =>
-        appointment.status === 'booked' || appointment.status === 'confirmed'
+      // Count appointments booked (assuming 'scheduled' status from API)
+      const bookedCount = (appointmentsData || []).filter((appointment: Appointment) =>
+        appointment.status === 'scheduled' || appointment.status === 'confirmed'
       ).length;
       setAppointmentsBooked(bookedCount);
 
