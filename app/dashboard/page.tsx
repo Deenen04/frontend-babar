@@ -1,8 +1,88 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { callsApi, type Call } from '@/lib/api/calls';
+import { appointmentsApi, type Appointment } from '@/lib/api/appointments';
+import { remindersApi, type Reminder } from '@/lib/api/reminders';
 
 export default function Dashboard() {
+  const [totalMinutes, setTotalMinutes] = useState<number>(0);
+  const [appointmentsBooked, setAppointmentsBooked] = useState<number>(0);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [liveCalls, setLiveCalls] = useState<Call[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch calls data for total minutes and live calls using API caller
+      const callsData = await callsApi.getCalls();
+
+      // Calculate total minutes from all calls
+      const totalMinutesCalculated = callsData.reduce((total: number, call: Call) => {
+        return total + (call.duration_seconds / 60); // Convert seconds to minutes
+      }, 0);
+      setTotalMinutes(Math.round(totalMinutesCalculated));
+
+      // Filter live/ongoing calls
+      const liveCallsFiltered = callsData.filter((call: Call) =>
+        call.call_status === 'ongoing' || call.call_status === 'active'
+      );
+      setLiveCalls(liveCallsFiltered);
+
+      // Fetch appointments data using API caller
+      const appointmentsData = await appointmentsApi.getAppointments();
+
+      // Count appointments booked (assuming 'booked' or 'confirmed' status)
+      const bookedCount = appointmentsData.filter((appointment: Appointment) =>
+        appointment.status === 'booked' || appointment.status === 'confirmed'
+      ).length;
+      setAppointmentsBooked(bookedCount);
+
+      // Fetch reminders data using API caller
+      const remindersData = await remindersApi.getReminders();
+      setReminders(remindersData.slice(0, 3)); // Show only first 3 reminders
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case 'high': return 'bg-red-100 text-red-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getReminderTypeColor = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'prescription': return 'text-blue-600';
+      case 'callback': return 'text-purple-600';
+      case 'followup': return 'text-orange-600';
+      default: return 'text-gray-600';
+    }
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout title="Dashboard">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
   return (
     <DashboardLayout title="Dashboard">
       <div className="space-y-6">
@@ -22,7 +102,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-sm text-gray-600">Total Calling Minutes</p>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-gray-900">770</span>
+                    <span className="text-3xl font-bold text-gray-900">{totalMinutes.toLocaleString()}</span>
                     <span className="text-sm text-gray-500">min</span>
                   </div>
                 </div>
@@ -39,7 +119,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Appointments Booked by AI</p>
-                  <span className="text-3xl font-bold text-gray-900">156</span>
+                  <span className="text-3xl font-bold text-gray-900">{appointmentsBooked}</span>
                 </div>
               </div>
             </div>
@@ -56,68 +136,37 @@ export default function Dashboard() {
           </div>
           
           <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
-            {/* Reminder Item 1 */}
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-medium text-gray-600">PN</span>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Patient Name</p>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-                      Low
-                    </span>
-                    <span className="text-sm text-blue-600">Type: Prescription</span>
-                  </div>
-                </div>
+            {reminders.length === 0 ? (
+              <div className="p-4 text-center text-gray-500">
+                No reminders found
               </div>
-              <button className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary-hover">
-                View
-              </button>
-            </div>
-
-            {/* Reminder Item 2 */}
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-medium text-gray-600">PN</span>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Patient Name</p>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                      Medium
-                    </span>
-                    <span className="text-sm text-purple-600">Type: Callback</span>
+            ) : (
+              reminders.map((reminder) => (
+                <div key={reminder.id} className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                      <span className="text-xs font-medium text-gray-600">
+                        {reminder.patient_phone.slice(-2)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{reminder.title}</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${getPriorityColor(reminder.priority)}`}>
+                          {reminder.priority}
+                        </span>
+                        <span className={`text-sm ${getReminderTypeColor(reminder.reminder_type)}`}>
+                          Type: {reminder.reminder_type}
+                        </span>
+                      </div>
+                    </div>
                   </div>
+                  <button className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary-hover">
+                    View
+                  </button>
                 </div>
-              </div>
-              <button className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary-hover">
-                View
-              </button>
-            </div>
-
-            {/* Reminder Item 3 */}
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-medium text-gray-600">PN</span>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Patient Name</p>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                      Medium
-                    </span>
-                    <span className="text-sm text-purple-600">Type: Callback</span>
-                  </div>
-                </div>
-              </div>
-              <button className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary-hover">
-                View
-              </button>
-            </div>
+              ))
+            )}
           </div>
         </section>
 
@@ -131,45 +180,36 @@ export default function Dashboard() {
           </div>
           
           <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
-            {/* Live Call 1 */}
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">Patient Name</span>
-                  <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                    Incoming call
-                  </span>
-                  <span className="text-sm text-gray-500">141-888273</span>
+            {liveCalls.length === 0 ? (
+              <div className="p-4 text-center text-gray-500">
+                No live calls at the moment
+              </div>
+            ) : (
+              liveCalls.map((call) => (
+                <div key={call.id} className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900">
+                        {call.patient_id ? `Patient ${call.patient_id.slice(0, 8)}...` : 'Unknown Patient'}
+                      </span>
+                      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        {call.call_type === 'incoming' ? 'Incoming call' : 'Outgoing call'}
+                      </span>
+                      <span className="text-sm text-gray-500">{call.phone_number}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium mb-1">Transcription</p>
+                    <p className="text-sm text-gray-500">
+                      {call.transcript && call.transcript.length > 100
+                        ? `${call.transcript.substring(0, 100)}...`
+                        : call.transcript || 'No transcription available'
+                      }
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 font-medium mb-1">Transcription</p>
-                <p className="text-sm text-gray-500">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor 
-                  incididunt ut...
-                </p>
-              </div>
-            </div>
-
-            {/* Live Call 2 */}
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">Patient Name</span>
-                  <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                    Incoming call
-                  </span>
-                  <span className="text-sm text-gray-500">141-888273</span>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 font-medium mb-1">Transcription</p>
-                <p className="text-sm text-gray-500">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor 
-                  incididunt ut...
-                </p>
-              </div>
-            </div>
+              ))
+            )}
           </div>
         </section>
       </div>

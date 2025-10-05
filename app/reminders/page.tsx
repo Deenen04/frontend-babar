@@ -1,115 +1,85 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-
-type ReminderStatus = 'pending' | 'completed';
-type ReminderPriority = 'Low' | 'Medium' | 'High';
-type ReminderType = 'Prescription' | 'Callback';
+import { remindersApi, remindersUtils, type Reminder as APIReminder, type ReminderPriority, type ReminderType } from '@/lib/api';
 
 interface Reminder {
   id: string;
   patientName: string;
-  priority: ReminderPriority;
-  type: ReminderType;
+  priority: 'Low' | 'Medium' | 'High';
+  type: 'Prescription' | 'Callback' | 'Follow-up';
   phoneNumber: string;
   dueDate: string;
   source: string;
   taskDescription: string;
-  status: ReminderStatus;
+  status: 'pending' | 'completed';
 }
 
-const sampleReminders: Reminder[] = [
-  {
-    id: '1',
-    patientName: 'Patient Name',
-    priority: 'Low',
-    type: 'Prescription',
-    phoneNumber: '141-888273',
-    dueDate: 'Due Date',
-    source: 'Incoming call',
-    taskDescription: 'Amet minim mollit non deserunt ullamco est sit aliqua dolor do amet sint. Velit officia consequat duis enim velit mollit. Exercitation veniam consequat sunt nostrud amet.',
-    status: 'pending',
-  },
-  {
-    id: '2',
-    patientName: 'Patient Name',
-    priority: 'Medium',
-    type: 'Callback',
-    phoneNumber: '141-888273',
-    dueDate: 'Due Date',
-    source: 'Incoming call',
-    taskDescription: 'Amet minim mollit non deserunt ullamco est sit aliqua dolor do amet sint. Velit officia consequat duis enim velit mollit. Exercitation veniam consequat sunt nostrud amet.',
-    status: 'pending',
-  },
-  {
-    id: '3',
-    patientName: 'Patient Name',
-    priority: 'High',
-    type: 'Prescription',
-    phoneNumber: '141-888273',
-    dueDate: 'Due Date',
-    source: 'Incoming call',
-    taskDescription: 'Amet minim mollit non deserunt ullamco est sit aliqua dolor do amet sint. Velit officia consequat duis enim velit mollit. Exercitation veniam consequat sunt nostrud amet.',
-    status: 'pending',
-  },
-  {
-    id: '4',
-    patientName: 'Patient Name',
-    priority: 'High',
-    type: 'Callback',
-    phoneNumber: '141-888273',
-    dueDate: 'Due Date',
-    source: 'Incoming call',
-    taskDescription: 'Amet minim mollit non deserunt ullamco est sit aliqua dolor do amet sint. Velit officia consequat duis enim velit mollit. Exercitation veniam consequat sunt nostrud amet.',
-    status: 'pending',
-  },
-  {
-    id: '5',
-    patientName: 'Patient Name',
-    priority: 'Low',
-    type: 'Prescription',
-    phoneNumber: '141-888273',
-    dueDate: 'Due Date',
-    source: 'Incoming call',
-    taskDescription: 'Amet minim mollit non deserunt ullamco est sit aliqua dolor do amet sint. Velit officia consequat duis enim velit mollit. Exercitation veniam consequat sunt nostrud amet.',
-    status: 'completed',
-  },
-  {
-    id: '6',
-    patientName: 'Patient Name',
-    priority: 'Medium',
-    type: 'Callback',
-    phoneNumber: '141-888273',
-    dueDate: 'Due Date',
-    source: 'Incoming call',
-    taskDescription: 'Amet minim mollit non deserunt ullamco est sit aliqua dolor do amet sint. Velit officia consequat duis enim velit mollit. Exercitation veniam consequat sunt nostrud amet.',
-    status: 'completed',
-  },
-];
-
 export default function Reminders() {
-  const [activeTab, setActiveTab] = useState<ReminderStatus>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState('Sep 9 - Sep 15, 2025');
-  const [reminders, setReminders] = useState<Reminder[]>(sampleReminders);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expandedReminders, setExpandedReminders] = useState<Set<string>>(new Set());
 
-  const filteredReminders = reminders.filter(reminder => 
+  // Load reminders from API
+  useEffect(() => {
+    const loadReminders = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Fetch reminders from API
+        const apiReminders = await remindersApi.getReminders();
+
+        // Convert API format to UI format
+        const uiReminders = apiReminders.map(remindersUtils.formatForDisplay);
+
+        setReminders(uiReminders);
+      } catch (err) {
+        console.error('Error loading reminders:', err);
+        setError('Failed to load reminders. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadReminders();
+  }, []);
+
+  // Update reminder status using API
+  const handleMoveToCompleted = async (reminderId: string) => {
+    try {
+      setError(null);
+
+      // Update reminder status using API
+      await remindersUtils.updateReminderStatus(reminderId, 'completed', 'current-user-id');
+
+      // Update local state
+      setReminders(prev =>
+        prev.map(reminder =>
+          reminder.id === reminderId
+            ? { ...reminder, status: 'completed' }
+            : reminder
+        )
+      );
+
+    } catch (err) {
+      console.error('Error updating reminder status:', err);
+      setError('Failed to update reminder. Please try again.');
+    }
+  };
+
+  // Filter reminders based on active tab and search term
+  const filteredReminders = reminders.filter(reminder =>
     reminder.status === activeTab &&
     (reminder.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
      reminder.phoneNumber.includes(searchTerm))
   );
 
-  const handleMoveToCompleted = (reminderId: string) => {
-    setReminders(prev => 
-      prev.map(reminder => 
-        reminder.id === reminderId 
-          ? { ...reminder, status: 'completed' as ReminderStatus }
-          : reminder
-      )
-    );
-  };
 
   const toggleExpanded = (reminderId: string) => {
     setExpandedReminders(prev => {
@@ -142,6 +112,8 @@ export default function Reminders() {
         return 'text-blue-600';
       case 'Callback':
         return 'text-purple-600';
+      case 'Follow-up':
+        return 'text-orange-600';
       default:
         return 'text-gray-600';
     }
@@ -238,9 +210,31 @@ export default function Reminders() {
     );
   };
 
+
   return (
     <DashboardLayout title="Reminders">
       <div className="space-y-6">
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex">
+              <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="ml-3">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+              <button
+                onClick={() => setError(null)}
+                className="ml-auto text-red-400 hover:text-red-600"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
         {/* Tabs */}
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
@@ -303,15 +297,42 @@ export default function Reminders() {
         </div>
 
         {/* Reminders Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredReminders.map((reminder) => (
-            <ReminderCard key={reminder.id} reminder={reminder} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[...Array(6)].map((_, index) => (
+              <div key={index} className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                  <div className="h-8 bg-gray-200 rounded w-20"></div>
+                </div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-6 bg-gray-200 rounded w-16"></div>
+                  <div className="h-4 bg-gray-200 rounded w-24"></div>
+                </div>
+                <div className="space-y-2 mb-4">
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                </div>
+                <div className="h-16 bg-gray-200 rounded"></div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredReminders.map((reminder) => (
+              <ReminderCard key={reminder.id} reminder={reminder} />
+            ))}
+          </div>
+        )}
 
-        {filteredReminders.length === 0 && (
+        {!loading && filteredReminders.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">No {activeTab} reminders found.</p>
+            <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <p className="text-gray-500">
+              {searchTerm ? `No ${activeTab} reminders found matching "${searchTerm}".` : `No ${activeTab} reminders found.`}
+            </p>
           </div>
         )}
       </div>

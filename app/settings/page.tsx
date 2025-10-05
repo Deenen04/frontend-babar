@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { settingsApi, userSettingsApi, systemSettingsApi, type UserSetting } from '@/lib/api';
 
 type ModalType = 'none' | 'resetConfirm' | 'verification' | 'resetForm' | 'success';
 
@@ -20,10 +21,100 @@ export default function Settings() {
     confirm: false
   });
   const [formData, setFormData] = useState({
-    accountName: 'John Doe',
-    email: 'JohnDoe23@gmail.com',
-    clinicName: 'Clinic Name'
+    accountName: 'Demo User',
+    email: 'demo@example.com',
+    clinicName: 'Demo Clinic'
   });
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load settings from API
+  useEffect(() => {
+    const loadSettings = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Load user settings
+        const userId = 'current-user-id'; // In a real app, get from auth context
+        const userSettings = await settingsApi.getUserProfile(userId);
+
+        // Convert user settings to form data
+        const settingsMap = userSettings.reduce((acc, setting) => {
+          acc[setting.setting_key] = setting.setting_value;
+          return acc;
+        }, {} as Record<string, string>);
+
+        setFormData({
+          accountName: settingsMap.account_name || 'Demo User',
+          email: settingsMap.email || 'demo@example.com',
+          clinicName: settingsMap.clinic_name || 'Demo Clinic'
+        });
+
+        // Load system settings to check AI bot status
+        const systemSettings = await settingsApi.getSystemConfig();
+        const aiBotSetting = systemSettings.find(setting => setting.setting_key === 'ai_bot_enabled');
+        if (aiBotSetting) {
+          setAiBotEnabled(aiBotSetting.setting_value === 'true');
+        }
+
+      } catch (err) {
+        console.error('Error loading settings:', err);
+        setError('Failed to load settings. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  // Save settings using API
+  const saveSettings = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+
+      const userId = 'current-user-id'; // In a real app, get from auth context
+
+      // Save user profile settings
+      const userSettings = {
+        account_name: formData.accountName,
+        email: formData.email,
+        clinic_name: formData.clinicName,
+      };
+      await settingsApi.updateUserProfile(userId, userSettings);
+
+      // Save AI bot system setting
+      const systemSettings = await settingsApi.getSystemConfig();
+      const aiBotSetting = systemSettings.find(setting => setting.setting_key === 'ai_bot_enabled');
+
+      if (aiBotSetting) {
+        await settingsApi.updateSystemConfig(
+          aiBotSetting.id,
+          aiBotEnabled.toString(),
+          userId
+        );
+      } else {
+        // Create the AI bot setting if it doesn't exist
+        await systemSettingsApi.create({
+          setting_key: 'ai_bot_enabled',
+          setting_value: aiBotEnabled.toString(),
+          setting_type: 'boolean',
+          description: 'Enable or disable AI bot functionality',
+          is_user_configurable: true,
+          updated_by: userId,
+        });
+      }
+
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      setError('Failed to save settings. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleResetPassword = () => {
     setActiveModal('resetConfirm');
@@ -228,22 +319,63 @@ export default function Settings() {
     </div>
   );
 
+
   return (
     <DashboardLayout title="Settings">
       <div className="space-y-8">
         {/* All Settings Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-gray-900">All Settings</h1>
-          <button
-            onClick={handleResetPassword}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Reset Password
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={saveSettings}
+              disabled={saving || loading}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              {saving ? 'Saving...' : 'Save Settings'}
+            </button>
+            <button
+              onClick={handleResetPassword}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Reset Password
+            </button>
+          </div>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex">
+              <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="ml-3">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+              <button
+                onClick={() => setError(null)}
+                className="ml-auto text-red-400 hover:text-red-600"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Form Fields */}
         <div className="space-y-6">
@@ -255,7 +387,9 @@ export default function Settings() {
               type="text"
               value={formData.accountName}
               onChange={(e) => setFormData(prev => ({ ...prev, accountName: e.target.value }))}
-              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+              disabled={loading}
+              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary disabled:bg-gray-50 disabled:cursor-not-allowed"
+              placeholder={loading ? "Loading..." : ""}
             />
           </div>
 
@@ -267,7 +401,9 @@ export default function Settings() {
               type="email"
               value={formData.email}
               onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+              disabled={loading}
+              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary disabled:bg-gray-50 disabled:cursor-not-allowed"
+              placeholder={loading ? "Loading..." : ""}
             />
           </div>
 
@@ -279,8 +415,9 @@ export default function Settings() {
               type="text"
               value={formData.clinicName}
               onChange={(e) => setFormData(prev => ({ ...prev, clinicName: e.target.value }))}
-              placeholder="Clinic Name"
-              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+              disabled={loading}
+              placeholder={loading ? "Loading..." : "Clinic Name"}
+              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary disabled:bg-gray-50 disabled:cursor-not-allowed"
             />
           </div>
         </div>

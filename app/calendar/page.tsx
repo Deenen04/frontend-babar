@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 
@@ -17,51 +17,52 @@ interface Appointment {
   day?: number; // for week view
 }
 
-
-const sampleAppointments: Appointment[] = [
+// Mock appointment data for MVP
+const MOCK_APPOINTMENTS: Appointment[] = [
   {
     id: '1',
-    title: 'Doctor Name',
-    startTime: '09:20',
-    endTime: '09:40',
-    patient: 'Patient Name',
+    title: 'Consultation',
+    startTime: '09:00 AM',
+    endTime: '09:40 AM',
+    patient: 'John Doe',
     type: 'Doctor',
+    day: 11,
   },
   {
     id: '2',
-    title: 'Appointment',
-    startTime: '09:00',
-    endTime: '11:30',
-    patient: 'All Patient',
+    title: 'Check-up',
+    startTime: '10:00 AM',
+    endTime: '10:20 AM',
+    patient: 'Jane Smith',
     type: 'Doctor',
-    day: 9,
+    day: 11,
   },
   {
     id: '3',
-    title: 'Appointment',
-    startTime: '09:00',
-    endTime: '11:30',
-    patient: 'All Patient',
-    type: 'Doctor',
-    day: 10,
+    title: 'Iron Infusion',
+    startTime: '02:00 PM',
+    endTime: '03:00 PM',
+    patient: 'Bob Wilson',
+    type: 'Iron Infusion',
+    day: 11,
   },
   {
     id: '4',
-    title: 'Appointment',
-    startTime: '09:00',
-    endTime: '11:30',
-    patient: 'All Patient',
-    type: 'Doctor',
-    day: 12,
+    title: 'Follow-up',
+    startTime: '11:00 AM',
+    endTime: '11:30 AM',
+    patient: 'Alice Johnson',
+    type: 'Nurse',
+    day: 10,
   },
   {
     id: '5',
-    title: 'Appointment',
-    startTime: '09:00',
-    endTime: '11:30',
-    patient: 'All Patient',
+    title: 'Consultation',
+    startTime: '03:00 PM',
+    endTime: '03:40 PM',
+    patient: 'Charlie Brown',
     type: 'Doctor',
-    day: 10,
+    day: 12,
   },
 ];
 
@@ -73,13 +74,27 @@ const timeSlots = [
   '05:00 PM', '05:20 PM', '05:40 PM'
 ];
 
-
 export default function Calendar() {
   const [activeStaff, setActiveStaff] = useState<StaffType>('Doctor');
   const [currentView, setCurrentView] = useState<ViewType>('Day');
   const [currentDate, setCurrentDate] = useState('Sep 11 2025');
   const [dateRange, setDateRange] = useState('Sep 9 - Sep 15, 2025');
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const staffTabs: StaffType[] = ['Doctor', 'Nurse', 'Iron Infusion'];
+
+  // Load mock appointments for MVP
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+
+    // Simulate API delay
+    setTimeout(() => {
+      setAppointments(MOCK_APPOINTMENTS);
+      setLoading(false);
+    }, 1000);
+  }, []);
 
   const weekDays = [
     { short: 'MON', date: 9 },
@@ -91,125 +106,139 @@ export default function Calendar() {
     { short: 'SUN', date: 15 },
   ];
 
+  const DayView = () => {
+    // Filter appointments for the current day (Sep 11, 2025)
+    const todayAppointments = appointments.filter(apt => {
+      // For demo purposes, show appointments for day 11
+      return true; // We'll implement proper date filtering later
+    });
 
-  const DayView = () => (
-    <div className="flex">
-      {/* Time Column */}
-      <div className="w-24 pr-4">
-        {timeSlots.map(time => (
-          <div key={time} className="h-20 border-b border-gray-100 flex items-start pt-2">
-            <span className="text-sm text-gray-500">{time}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Appointment Column */}
-      <div className="flex-1 relative">
-        {timeSlots.map((time, index) => (
-          <div key={time} className="h-20 border-b border-gray-100 relative">
-            {/* Sample appointment at specific time */}
-            {time === '09:20 AM' && (
-              <div className="absolute left-0 right-0 top-2 mx-2">
-                <div className="bg-blue-100 border-l-4 border-blue-500 p-3 rounded">
-                  <div className="text-sm font-medium text-blue-900">Doctor Name</div>
-                  <div className="flex items-center gap-1 text-xs text-blue-700">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    09:20 am → 09:40 pm
-                  </div>
-                  <div className="text-xs text-blue-600 mt-1">Patient Name</div>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const WeekView = () => (
-    <div>
-      {/* Week Header */}
-      <div className="grid grid-cols-8 gap-0 mb-4">
-        <div className="text-sm text-gray-500 p-2">
-          <div>Clock Interval</div>
-          <div className="font-medium text-black">20 min</div>
-        </div>
-        {weekDays.map(day => (
-          <div key={day.date} className="text-center p-2">
-            <div className="text-sm text-gray-500">{day.short}</div>
-            <div className={`text-lg font-medium ${day.date === 11 ? 'bg-primary text-white w-8 h-8 rounded flex items-center justify-center mx-auto' : 'text-gray-900'}`}>
-              {day.date}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Week Grid */}
-      <div className="grid grid-cols-8 gap-0">
+    return (
+      <div className="flex">
         {/* Time Column */}
-        <div className="pr-2">
-          {timeSlots.slice(0, 12).map(time => (
-            <div key={time} className="h-16 border-b border-gray-100 flex items-start pt-2">
+        <div className="w-24 pr-4">
+          {timeSlots.map(time => (
+            <div key={time} className="h-20 border-b border-gray-100 flex items-start pt-2">
               <span className="text-sm text-gray-500">{time}</span>
             </div>
           ))}
         </div>
 
-        {/* Day Columns */}
-        {weekDays.map(day => (
-          <div key={day.date} className="border-l border-gray-100 relative">
-            {timeSlots.slice(0, 12).map((time, timeIndex) => (
-              <div key={time} className="h-16 border-b border-gray-100">
-                {/* Sample appointments */}
-                {day.date === 9 && timeIndex === 0 && (
-                  <div className="bg-blue-100 border border-blue-300 p-2 m-1 rounded text-xs">
-                    <div className="font-medium text-blue-900">Appointment</div>
-                    <div className="text-blue-700">9:00 - 11:30 AM</div>
-                    <select className="text-xs border border-blue-300 rounded mt-1 bg-white">
-                      <option>All Patient</option>
-                    </select>
+        {/* Appointment Column */}
+        <div className="flex-1 relative">
+          {timeSlots.map((time, index) => (
+            <div key={time} className="h-20 border-b border-gray-100 relative">
+              {/* Show appointments for this time slot */}
+              {todayAppointments
+                .filter(apt => apt.startTime.startsWith(time.replace(/ AM| PM/, '').trim()))
+                .map(appointment => (
+                  <div key={appointment.id} className="absolute left-0 right-0 top-2 mx-2">
+                    <div className="bg-blue-100 border-l-4 border-blue-500 p-3 rounded">
+                      <div className="text-sm font-medium text-blue-900">{appointment.title}</div>
+                      <div className="flex items-center gap-1 text-xs text-blue-700">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {appointment.startTime} → {appointment.endTime}
+                      </div>
+                      <div className="text-xs text-blue-600 mt-1">{appointment.patient}</div>
+                    </div>
                   </div>
-                )}
-                {day.date === 10 && timeIndex === 1 && (
-                  <div className="bg-blue-100 border border-blue-300 p-2 m-1 rounded text-xs">
-                    <div className="font-medium text-blue-900">Appointment</div>
-                    <div className="text-blue-700">9:00 - 11:30 AM</div>
-                    <select className="text-xs border border-blue-300 rounded mt-1 bg-white">
-                      <option>All Patient</option>
-                    </select>
-                  </div>
-                )}
-                {day.date === 12 && timeIndex === 0 && (
-                  <div className="bg-blue-100 border border-blue-300 p-2 m-1 rounded text-xs">
-                    <div className="font-medium text-blue-900">Appointment</div>
-                    <div className="text-blue-700">9:00 - 11:30 AM</div>
-                    <select className="text-xs border border-blue-300 rounded mt-1 bg-white">
-                      <option>All Patient</option>
-                    </select>
-                  </div>
-                )}
-                {day.date === 10 && timeIndex === 4 && (
-                  <div className="bg-blue-100 border border-blue-300 p-2 m-1 rounded text-xs">
-                    <div className="font-medium text-blue-900">Appointment</div>
-                    <div className="text-blue-700">9:00 - 11:30 AM</div>
-                    <select className="text-xs border border-blue-300 rounded mt-1 bg-white">
-                      <option>All Patient</option>
-                    </select>
-                  </div>
-                )}
+                ))
+              }
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const WeekView = () => {
+    // Filter appointments for the week view
+    const weekAppointments = appointments.filter(apt => apt.day);
+
+    return (
+      <div>
+        {/* Week Header */}
+        <div className="grid grid-cols-8 gap-0 mb-4">
+          <div className="text-sm text-gray-500 p-2">
+            <div>Clock Interval</div>
+            <div className="font-medium text-black">20 min</div>
+          </div>
+          {weekDays.map(day => (
+            <div key={day.date} className="text-center p-2">
+              <div className="text-sm text-gray-500">{day.short}</div>
+              <div className={`text-lg font-medium ${day.date === 11 ? 'bg-primary text-white w-8 h-8 rounded flex items-center justify-center mx-auto' : 'text-gray-900'}`}>
+                {day.date}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Week Grid */}
+        <div className="grid grid-cols-8 gap-0">
+          {/* Time Column */}
+          <div className="pr-2">
+            {timeSlots.slice(0, 12).map(time => (
+              <div key={time} className="h-16 border-b border-gray-100 flex items-start pt-2">
+                <span className="text-sm text-gray-500">{time}</span>
               </div>
             ))}
           </div>
-        ))}
+
+          {/* Day Columns */}
+          {weekDays.map(day => (
+            <div key={day.date} className="border-l border-gray-100 relative">
+              {timeSlots.slice(0, 12).map((time, timeIndex) => (
+                <div key={time} className="h-16 border-b border-gray-100">
+                  {/* Show appointments for this day and time */}
+                  {weekAppointments
+                    .filter(apt => apt.day === day.date)
+                    .filter(apt => apt.startTime.startsWith(time.replace(/ AM| PM/, '').trim()))
+                    .map(appointment => (
+                      <div key={appointment.id} className="bg-blue-100 border border-blue-300 p-2 m-1 rounded text-xs">
+                        <div className="font-medium text-blue-900">{appointment.title}</div>
+                        <div className="text-blue-700">{appointment.startTime} - {appointment.endTime}</div>
+                        <select className="text-xs border border-blue-300 rounded mt-1 bg-white">
+                          <option>{appointment.patient}</option>
+                        </select>
+                      </div>
+                    ))
+                  }
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
+
 
   return (
     <DashboardLayout title="Calendar">
       <div className="space-y-6">
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex">
+              <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="ml-3">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+              <button
+                onClick={() => setError(null)}
+                className="ml-auto text-red-400 hover:text-red-600"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
         {/* Header with tabs and controls */}
         <div className="flex items-center justify-between">
           {/* Staff Tabs */}
@@ -293,7 +322,18 @@ export default function Calendar() {
 
         {/* Calendar View */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          {currentView === 'Day' ? <DayView /> : <WeekView />}
+          {loading ? (
+            <div className="flex items-center justify-center min-h-[600px]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading appointments...</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {currentView === 'Day' ? <DayView /> : <WeekView />}
+            </>
+          )}
         </div>
       </div>
 

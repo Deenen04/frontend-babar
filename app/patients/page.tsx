@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import PatientsList from '@/components/PatientsList';
 import AddPatientForm from '@/components/AddPatientForm';
 import PatientDetails from '@/components/PatientDetails';
+import { patientsApi, patientsUtils, Patient as APIPatient } from '@/lib/api';
+
+// Patients page with real API integration
 
 export type Patient = {
   id: string;
@@ -23,62 +26,81 @@ export type Patient = {
   note?: string;
 };
 
-const samplePatients: Patient[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    dateOfBirth: '29/03/2003',
-    ext: '+91',
-    phoneNo: '8096676654',
-    insuranceProvider: '-',
-    insuranceId: '-',
-    email: 'martha.johnson@gmail.com',
-    address: '0410 Witting Overpass,California',
-    gender: 'Male',
-    age: 26,
-    contactNumber: '+ 1 345 346 347',
-    providerName: 'Company Name',
-    note: '',
-  },
-  {
-    id: '2',
-    name: 'John Doe',
-    dateOfBirth: 'Designer',
-    ext: '+91',
-    phoneNo: '8096676654',
-    insuranceProvider: 'Provider Name',
-    insuranceId: '12345',
-    email: 'martha.johnson@gmail.com',
-    address: '0410 Witting Overpass,California',
-    gender: 'Male',
-    age: 26,
-    contactNumber: '+ 1 345 346 347',
-    providerName: 'Company Name',
-    note: '',
-  },
-];
-
 export type ViewType = 'list' | 'add' | 'edit' | 'details';
 
 export default function Patients() {
   const [currentView, setCurrentView] = useState<ViewType>('list');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [patients, setPatients] = useState<Patient[]>(samplePatients);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAddPatient = (patient: Omit<Patient, 'id'>) => {
-    const newPatient = {
-      ...patient,
-      id: (patients.length + 1).toString(),
+  // Load patients from API
+  useEffect(() => {
+    const loadPatients = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Fetch patients from API
+        const apiPatients = await patientsApi.getPatients();
+
+        // Convert API format to UI format
+        const uiPatients = apiPatients.map(patientsUtils.formatForDisplay);
+
+        setPatients(uiPatients);
+      } catch (err) {
+        console.error('Error loading patients:', err);
+        setError('Failed to load patients. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     };
-    setPatients([...patients, newPatient]);
-    setCurrentView('list');
+
+    loadPatients();
+  }, []);
+
+  // Add new patient using API
+  const handleAddPatient = async (patient: Omit<Patient, 'id'>) => {
+    try {
+      setError(null);
+
+      // Create patient using API
+      const apiPatient = await patientsUtils.createFromForm(patient, 'current-user-id');
+
+      // Convert to UI format and add to local state
+      const uiPatient = patientsUtils.formatForDisplay(apiPatient);
+      setPatients([...patients, uiPatient]);
+
+      setCurrentView('list');
+    } catch (err) {
+      console.error('Error adding patient:', err);
+      setError('Failed to add patient. Please try again.');
+    }
   };
 
-  const handleEditPatient = (updatedPatient: Patient | Omit<Patient, 'id'>) => {
-    if ('id' in updatedPatient) {
-      setPatients(patients.map(p => p.id === updatedPatient.id ? updatedPatient : p));
+  // Update existing patient using API
+  const handleEditPatient = async (updatedPatient: Patient | Omit<Patient, 'id'>) => {
+    try {
+      setError(null);
+
+      if ('id' in updatedPatient && updatedPatient.id) {
+        // Update patient using API
+        const apiPatient = await patientsUtils.updateFromForm(updatedPatient.id, updatedPatient);
+
+        // Convert to UI format and update local state
+        const uiPatient = patientsUtils.formatForDisplay(apiPatient);
+        const updatedPatients = patients.map(patient =>
+          patient.id === updatedPatient.id ? uiPatient : patient
+        );
+        setPatients(updatedPatients);
+      }
+
+      setCurrentView('list');
+    } catch (err) {
+      console.error('Error updating patient:', err);
+      setError('Failed to update patient. Please try again.');
     }
-    setCurrentView('list');
   };
 
   const handleViewPatient = (patient: Patient) => {
@@ -94,6 +116,24 @@ export default function Patients() {
   const handleBackToList = () => {
     setCurrentView('list');
     setSelectedPatient(null);
+  };
+
+  // Delete patient using API
+  const handleDeletePatient = async (patientId: string) => {
+    try {
+      setError(null);
+
+      // Delete patient using API (soft delete)
+      await patientsApi.delete(patientId);
+
+      // Remove from local state
+      const updatedPatients = patients.filter(patient => patient.id !== patientId);
+      setPatients(updatedPatients);
+
+    } catch (err) {
+      console.error('Error deleting patient:', err);
+      setError('Failed to delete patient. Please try again.');
+    }
   };
 
   const renderContent = () => {
@@ -128,6 +168,7 @@ export default function Patients() {
             onAddPatient={() => setCurrentView('add')}
             onViewPatient={handleViewPatient}
             onEditPatient={handleEditPatientForm}
+            onDeletePatient={handleDeletePatient}
           />
         );
     }
@@ -135,7 +176,41 @@ export default function Patients() {
 
   return (
     <DashboardLayout title="Patients">
-      {renderContent()}
+      <div className="space-y-6">
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex">
+              <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="ml-3">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+              <button
+                onClick={() => setError(null)}
+                className="ml-auto text-red-400 hover:text-red-600"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Content based on current view */}
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading patients...</p>
+            </div>
+          </div>
+        ) : (
+          renderContent()
+        )}
+      </div>
     </DashboardLayout>
   );
 }

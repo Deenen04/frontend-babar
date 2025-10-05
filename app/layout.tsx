@@ -15,8 +15,8 @@ const ibmPlexSerif = IBM_Plex_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "ClinicBot - Login",
-  description: "Login to access your ClinicBot account",
+  title: "ClinicBot",
+  description: "Clinic management system",
 };
 
 export default function RootLayout({
