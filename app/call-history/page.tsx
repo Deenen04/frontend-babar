@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import CallDetailsModal from '../../components/CallDetailsModal';
+import { DatePicker } from '@/components/ui/date-picker';
 import { callsApi, callsUtils, type Call } from '@/lib/api';
 
 type CallStatus = 'Live' | 'Answered' | 'Missed';
@@ -78,26 +79,58 @@ const MOCK_CALLS: CallRecord[] = [
 export default function CallHistory() {
   const [activeTab, setActiveTab] = useState<TabType>('All');
   const [selectedCall, setSelectedCall] = useState<CallRecord | null>(null);
-  const [currentDate, setCurrentDate] = useState('Sep 11 2025');
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState('All');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalCalls, setTotalCalls] = useState(0);
 
-  // Load calls from API
+  // Load calls from API with filters
   useEffect(() => {
     const loadCalls = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Fetch calls from API
-        const apiCalls = await callsApi.getCalls();
+        // Prepare filter parameters
+        const params: any = {};
+
+        // Add status filter based on active tab
+        if (activeTab !== 'All') {
+          if (activeTab === 'Chat') {
+            params.status = 'Chat'; // Assuming Chat is a status
+          } else {
+            params.status = activeTab;
+          }
+        }
+
+        // Add search filter
+        if (searchTerm) {
+          params.search = searchTerm;
+        }
+
+        // Add date filter
+        if (selectedDate) {
+          params.start_date = selectedDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        }
+
+        // Fetch calls from API with filters
+        const apiCalls = await callsApi.getCalls(params);
+
+        // Apply client-side filters for search and date if API doesn't support them
+        let filteredCalls = apiCalls;
+
+        if (searchTerm && !params.search) {
+          filteredCalls = await callsUtils.searchCalls(searchTerm, filteredCalls);
+        }
+
+        if (selectedDate && params.start_date) {
+          filteredCalls = await callsUtils.filterCallsByDate(params.start_date, filteredCalls);
+        }
 
         // Convert API format to UI format using the utility function
-        const uiCalls = apiCalls.map(call => callsUtils.formatForDisplay(call));
+        const uiCalls = filteredCalls.map(call => callsUtils.formatForDisplay(call));
 
         setCalls(uiCalls);
         setTotalCalls(uiCalls.length);
@@ -110,25 +143,12 @@ export default function CallHistory() {
     };
 
     loadCalls();
-  }, []);
+  }, [activeTab, searchTerm, selectedDate]);
 
   const tabs: TabType[] = ['All', 'Live', 'Answered', 'Chat'];
 
-  // Filter calls based on active tab
-  const getFilteredCalls = (): CallRecord[] => {
-    switch (activeTab) {
-      case 'Live':
-        return calls.filter(call => call.status === 'Live');
-      case 'Answered':
-        return calls.filter(call => call.status === 'Answered');
-      case 'Chat':
-        return calls.filter(call => call.isChat);
-      default:
-        return calls;
-    }
-  };
-
-  const filteredCalls = getFilteredCalls();
+  // Calls are already filtered by the API, so just return them
+  const filteredCalls = calls;
 
   const getCallTypeDisplay = (call: CallRecord) => {
     if (call.isChat) {
@@ -222,17 +242,31 @@ export default function CallHistory() {
           </nav>
         </div>
 
-        {/* Header with total calls and date picker */}
-        <div className="flex items-center justify-between">
-          <div className="text-gray-600">
-            Total number of calls <span className="font-semibold text-gray-900">{totalCalls}</span>
+        {/* Header with total calls, search, and date picker */}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="text-gray-600">
+              Total number of calls <span className="font-semibold text-gray-900">{totalCalls}</span>
+            </div>
           </div>
-          
-          <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white">
-            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span className="text-sm text-gray-900">{currentDate}</span>
+
+          {/* Search and filters */}
+          <div className="flex items-center gap-4">
+            <div className="flex-1 max-w-md">
+              <input
+                type="text"
+                placeholder="Search by patient name or phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+
+            <DatePicker
+              date={selectedDate}
+              onDateChange={setSelectedDate}
+              placeholder="Filter by date"
+            />
           </div>
         </div>
 

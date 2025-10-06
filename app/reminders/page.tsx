@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { remindersApi, remindersUtils, type Reminder as APIReminder, type ReminderPriority, type ReminderType } from '@/lib/api';
 
@@ -17,13 +18,28 @@ interface Reminder {
 }
 
 export default function Reminders() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
-  const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState('Sep 9 - Sep 15, 2025');
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedReminders, setExpandedReminders] = useState<Set<string>>(new Set());
+
+  // Get search term from URL
+  const searchTerm = searchParams.get('search') || '';
+
+  // Update URL when search term changes
+  const handleSearchChange = (newSearchTerm: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (newSearchTerm) {
+      params.set('search', newSearchTerm);
+    } else {
+      params.delete('search');
+    }
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
 
   // Load reminders from API
   useEffect(() => {
@@ -274,7 +290,7 @@ export default function Reminders() {
                 type="text"
                 placeholder="Search by Name, phone..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2 text-black border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary"
               />
             </div>

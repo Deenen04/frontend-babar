@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import PatientsList from '@/components/PatientsList';
 import AddPatientForm from '@/components/AddPatientForm';
@@ -29,11 +30,27 @@ export type Patient = {
 export type ViewType = 'list' | 'add' | 'edit' | 'details';
 
 export default function Patients() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [currentView, setCurrentView] = useState<ViewType>('list');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Get search term from URL
+  const searchTerm = searchParams.get('search') || '';
+
+  // Update URL when search term changes
+  const handleSearchChange = (newSearchTerm: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (newSearchTerm) {
+      params.set('search', newSearchTerm);
+    } else {
+      params.delete('search');
+    }
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
 
   // Load patients from API
   useEffect(() => {
@@ -165,6 +182,8 @@ export default function Patients() {
         return (
           <PatientsList
             patients={patients}
+            searchTerm={searchTerm}
+            onSearchChange={handleSearchChange}
             onAddPatient={() => setCurrentView('add')}
             onViewPatient={handleViewPatient}
             onEditPatient={handleEditPatientForm}

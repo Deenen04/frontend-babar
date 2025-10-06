@@ -53,14 +53,26 @@ export interface CallResponse {
 
 // Calls API functions
 export const callsApi = {
-  // Get all calls with pagination
-  getAll: async (params?: { page?: number; limit?: number }): Promise<CallResponse> => {
+  // Get all calls with pagination and filtering
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+    start_date?: string;
+  }): Promise<CallResponse> => {
     const response = await axiosInstance.get('/calls', { params });
     return response.data as CallResponse;
   },
 
   // Get calls data (extract results from paginated response)
-  getCalls: async (params?: { page?: number; limit?: number }): Promise<Call[]> => {
+  getCalls: async (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+    start_date?: string;
+  }): Promise<Call[]> => {
     const response = await callsApi.getAll(params);
     return response.results;
   },
@@ -90,8 +102,8 @@ export const callsApi = {
   },
 
   // Get calls by status
-  getByStatus: async (status: string, params?: { page?: number; limit?: number }): Promise<Call[]> => {
-    const calls = await callsApi.getCalls(params);
+  getByStatus: async (status: string, params?: { page?: number; limit?: number; search?: string; start_date?: string }): Promise<Call[]> => {
+    const calls = await callsApi.getCalls({ ...params, status });
     return calls.filter(call => call.call_status === status);
   },
 
@@ -229,6 +241,31 @@ export const callsUtils = {
       console.error('Error updating call status:', error);
       throw error;
     }
+  },
+
+  // Search calls by patient name or phone number
+  searchCalls: async (searchTerm: string, calls: Call[]): Promise<Call[]> => {
+    if (!searchTerm) return calls;
+
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    return calls.filter(call =>
+      (call.patient_id && call.patient_id.toLowerCase().includes(lowerSearchTerm)) ||
+      call.phone_number.toLowerCase().includes(lowerSearchTerm)
+    );
+  },
+
+  // Filter calls by date
+  filterCallsByDate: async (startDate: string, calls: Call[]): Promise<Call[]> => {
+    if (!startDate) return calls;
+
+    const filterDate = new Date(startDate);
+    filterDate.setHours(0, 0, 0, 0);
+
+    return calls.filter(call => {
+      const callDate = new Date(call.created_at);
+      callDate.setHours(0, 0, 0, 0);
+      return callDate >= filterDate;
+    });
   },
 
   // Get call statistics
