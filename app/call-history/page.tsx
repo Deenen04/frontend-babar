@@ -21,61 +21,6 @@ interface CallRecord {
   isChat?: boolean;
 }
 
-// Mock call data for MVP
-const MOCK_CALLS: CallRecord[] = [
-  {
-    id: '1',
-    patientName: 'John Doe',
-    status: 'Answered',
-    phoneNo: '555-0123',
-    callType: 'Incoming call',
-    duration: '12:34',
-    date: 'Sep 11 2025',
-    hasTranscript: true,
-  },
-  {
-    id: '2',
-    patientName: 'Jane Smith',
-    status: 'Live',
-    phoneNo: '555-0456',
-    callType: 'Outgoing call',
-    duration: '23:45',
-    date: 'Sep 11 2025',
-    hasTranscript: false,
-  },
-  {
-    id: '3',
-    patientName: 'Bob Wilson',
-    status: 'Missed',
-    phoneNo: '555-0789',
-    callType: 'Incoming call',
-    duration: '00:00',
-    date: 'Sep 11 2025',
-    hasTranscript: false,
-  },
-  {
-    id: '4',
-    patientName: 'Alice Johnson',
-    status: 'Answered',
-    phoneNo: '555-0321',
-    callType: 'Incoming call',
-    duration: '08:15',
-    date: 'Sep 10 2025',
-    hasTranscript: true,
-  },
-  {
-    id: '5',
-    patientName: 'Charlie Brown',
-    status: 'Answered',
-    phoneNo: '555-0654',
-    callType: 'View Chat',
-    duration: '15:22',
-    date: 'Sep 10 2025',
-    hasTranscript: true,
-    isChat: true,
-  },
-];
-
 export default function CallHistory() {
   const [activeTab, setActiveTab] = useState<TabType>('All');
   const [selectedCall, setSelectedCall] = useState<CallRecord | null>(null);
@@ -115,22 +60,11 @@ export default function CallHistory() {
           params.start_date = selectedDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
         }
 
-        // Fetch calls from API with filters
+        // Fetch calls from API with filters (API handles search and date filtering)
         const apiCalls = await callsApi.getCalls(params);
 
-        // Apply client-side filters for search and date if API doesn't support them
-        let filteredCalls = apiCalls;
-
-        if (searchTerm && !params.search) {
-          filteredCalls = await callsUtils.searchCalls(searchTerm, filteredCalls);
-        }
-
-        if (selectedDate && params.start_date) {
-          filteredCalls = await callsUtils.filterCallsByDate(params.start_date, filteredCalls);
-        }
-
         // Convert API format to UI format using the utility function
-        const uiCalls = filteredCalls.map(call => callsUtils.formatForDisplay(call));
+        const uiCalls = apiCalls.map(call => callsUtils.formatForDisplay(call));
 
         setCalls(uiCalls);
         setTotalCalls(uiCalls.length);

@@ -16,14 +16,14 @@ export type Patient = {
   dateOfBirth: string;
   ext: string;
   phoneNo: string;
-  insuranceProvider: string;
-  insuranceId: string;
+  insuranceProvider: string | null;
+  insuranceId: string | null;
   email?: string;
   address?: string;
   gender?: string;
   age?: number;
   contactNumber?: string;
-  providerName?: string;
+  providerName?: string | null;
   note?: string;
 };
 

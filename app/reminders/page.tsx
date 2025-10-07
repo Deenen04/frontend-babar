@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
+import { DatePicker } from '@/components/ui/date-picker';
 import { remindersApi, remindersUtils, type Reminder as APIReminder, type ReminderPriority, type ReminderType } from '@/lib/api';
 
 interface Reminder {
@@ -21,7 +22,7 @@ export default function Reminders() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
-  const [dateRange, setDateRange] = useState('Sep 9 - Sep 15, 2025');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,15 +42,31 @@ export default function Reminders() {
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  // Load reminders from API
+  // Load reminders from API with filters
   useEffect(() => {
     const loadReminders = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Fetch reminders from API
-        const apiReminders = await remindersApi.getReminders();
+        // Prepare filter parameters
+        const params: any = {};
+
+        // Add status filter based on active tab
+        params.status = activeTab;
+
+        // Add search filter
+        if (searchTerm) {
+          params.search = searchTerm;
+        }
+
+        // Add date filter
+        if (selectedDate) {
+          params.start_date = selectedDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        }
+
+        // Fetch reminders from API with filters (API handles search and date filtering)
+        const apiReminders = await remindersApi.getReminders(params);
 
         // Convert API format to UI format
         const uiReminders = apiReminders.map(remindersUtils.formatForDisplay);
@@ -64,7 +81,7 @@ export default function Reminders() {
     };
 
     loadReminders();
-  }, []);
+  }, [activeTab, searchTerm, selectedDate]);
 
   // Update reminder status using API
   const handleMoveToCompleted = async (reminderId: string) => {
@@ -89,12 +106,8 @@ export default function Reminders() {
     }
   };
 
-  // Filter reminders based on active tab and search term
-  const filteredReminders = reminders.filter(reminder =>
-    reminder.status === activeTab &&
-    (reminder.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     reminder.phoneNumber.includes(searchTerm))
-  );
+  // Reminders are already filtered by the API, so just return them
+  const filteredReminders = reminders;
 
 
   const toggleExpanded = (reminderId: string) => {
@@ -297,13 +310,12 @@ export default function Reminders() {
           </div>
           
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white">
-              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className="text-sm text-gray-900">{dateRange}</span>
-            </div>
-            
+            <DatePicker
+              date={selectedDate}
+              onDateChange={setSelectedDate}
+              placeholder="Filter by due date"
+            />
+
             <button className="p-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50">
               <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />

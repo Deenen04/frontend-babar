@@ -59,14 +59,26 @@ export interface ReminderResponse {
 
 // Reminders API functions
 export const remindersApi = {
-  // Get all reminders with pagination
-  getAll: async (params?: { page?: number; limit?: number }): Promise<ReminderResponse> => {
+  // Get all reminders with pagination and filtering
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+    start_date?: string;
+  }): Promise<ReminderResponse> => {
     const response = await axiosInstance.get('/reminders', { params });
     return response.data as ReminderResponse;
   },
 
-  // Get reminders data (API returns array directly)
-  getReminders: async (params?: { page?: number; limit?: number }): Promise<Reminder[]> => {
+  // Get reminders data with filtering support
+  getReminders: async (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+    start_date?: string;
+  }): Promise<Reminder[]> => {
     const response = await axiosInstance.get('/reminders', { params });
     return response.data as Reminder[];
   },
@@ -111,6 +123,19 @@ export const remindersApi = {
   getByPatientPhone: async (phoneNumber: string, params?: { page?: number; limit?: number }): Promise<Reminder[]> => {
     const reminders = await remindersApi.getReminders(params);
     return reminders.filter(reminder => reminder.patient_phone === phoneNumber);
+  },
+
+  // Get reminders by date range
+  getByDateRange: async (startDate: string, endDate?: string, params?: { page?: number; limit?: number }): Promise<Reminder[]> => {
+    const reminders = await remindersApi.getReminders(params);
+    const start = new Date(startDate);
+    const end = endDate ? new Date(endDate) : new Date();
+
+    return reminders.filter(reminder => {
+      if (!reminder.due_date) return false;
+      const reminderDate = new Date(reminder.due_date);
+      return reminderDate >= start && reminderDate <= end;
+    });
   },
 };
 
@@ -171,6 +196,33 @@ export const remindersUtils = {
       console.error('Error creating reminder from patient:', error);
       throw error;
     }
+  },
+
+  // Search reminders by patient name or phone number
+  searchReminders: async (searchTerm: string, reminders: Reminder[]): Promise<Reminder[]> => {
+    if (!searchTerm) return reminders;
+
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    return reminders.filter(reminder =>
+      (reminder.patient_id && reminder.patient_id.toLowerCase().includes(lowerSearchTerm)) ||
+      reminder.patient_phone.toLowerCase().includes(lowerSearchTerm) ||
+      reminder.task_description.toLowerCase().includes(lowerSearchTerm)
+    );
+  },
+
+  // Filter reminders by date
+  filterRemindersByDate: async (startDate: string, reminders: Reminder[]): Promise<Reminder[]> => {
+    if (!startDate) return reminders;
+
+    const filterDate = new Date(startDate);
+    filterDate.setHours(0, 0, 0, 0);
+
+    return reminders.filter(reminder => {
+      if (!reminder.due_date) return false;
+      const reminderDate = new Date(reminder.due_date);
+      reminderDate.setHours(0, 0, 0, 0);
+      return reminderDate >= filterDate;
+    });
   },
 
   // Format reminder data for display

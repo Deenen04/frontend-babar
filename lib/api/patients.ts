@@ -185,7 +185,7 @@ export const patientsUtils = {
         state: null,
         zip_code: null,
         country: "US", // Default country
-        insurance_provider: formData.providerName || null,
+        insurance_provider: formData.insuranceProvider || null,
         insurance_id: formData.insuranceId || null,
         emergency_contact_name: null,
         emergency_contact_phone: null,
@@ -218,7 +218,7 @@ export const patientsUtils = {
         state: null,
         zip_code: null,
         country: "US",
-        insurance_provider: formData.providerName || null,
+        insurance_provider: formData.insuranceProvider || null,
         insurance_id: formData.insuranceId || null,
         emergency_contact_name: null,
         emergency_contact_phone: null,
