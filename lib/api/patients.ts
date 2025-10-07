@@ -149,7 +149,8 @@ export const patientsUtils = {
   formatForDisplay: (patient: Patient) => {
     return {
       id: patient.id,
-      name: `${patient.first_name} ${patient.last_name}`,
+      first_name: patient.first_name,
+      last_name: patient.last_name,
       dateOfBirth: patient.date_of_birth || '',
       ext: patient.phone_extension || '+1', // Use phone_extension from API
       phoneNo: patient.phone_number,
@@ -168,14 +169,9 @@ export const patientsUtils = {
   // Create patient from form data
   createFromForm: async (formData: any, userId: string) => {
     try {
-      // Split name into first and last name
-      const nameParts = formData.name.split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-
       return await patientsApi.create({
-        first_name: firstName,
-        last_name: lastName,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
         date_of_birth: formData.dateOfBirth || null,
         email: formData.email || null,
         phone_number: formData.phoneNo,
@@ -201,14 +197,9 @@ export const patientsUtils = {
   // Update patient from form data
   updateFromForm: async (patientId: string, formData: any) => {
     try {
-      // Split name into first and last name
-      const nameParts = formData.name.split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-
       return await patientsApi.update(patientId, {
-        first_name: firstName,
-        last_name: lastName,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
         date_of_birth: formData.dateOfBirth || null,
         email: formData.email || null,
         phone_number: formData.phoneNo,

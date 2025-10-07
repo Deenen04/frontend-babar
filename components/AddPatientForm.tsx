@@ -12,7 +12,8 @@ interface AddPatientFormProps {
 
 export default function AddPatientForm({ onCancel, onSubmit, patient, isEdit = false }: AddPatientFormProps) {
   const [formData, setFormData] = useState({
-    name: patient?.name || '',
+    first_name: patient?.first_name || '',
+    last_name: patient?.last_name || '',
     gender: patient?.gender || 'Male',
     dateOfBirth: patient?.dateOfBirth || '',
     ext: patient?.ext || '+351',
@@ -25,9 +26,10 @@ export default function AddPatientForm({ onCancel, onSubmit, patient, isEdit = f
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const patientData = {
-      name: formData.name,
+      first_name: formData.first_name,
+      last_name: formData.last_name,
       dateOfBirth: formData.dateOfBirth,
       ext: formData.ext,
       phoneNo: formData.phoneNo,
@@ -39,7 +41,7 @@ export default function AddPatientForm({ onCancel, onSubmit, patient, isEdit = f
       contactNumber: `${formData.ext} ${formData.phoneNo}`,
       age: 0, // Calculate based on date of birth
     };
-    
+
     if (isEdit && patient) {
       onSubmit({ ...patientData, id: patient.id });
     } else {
@@ -96,13 +98,27 @@ export default function AddPatientForm({ onCancel, onSubmit, patient, isEdit = f
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Patient's Name *
+                First Name *
               </label>
               <input
                 type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="John Doe"
+                value={formData.first_name}
+                onChange={(e) => handleInputChange('first_name', e.target.value)}
+                placeholder="John"
+                className="w-full px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Last Name *
+              </label>
+              <input
+                type="text"
+                value={formData.last_name}
+                onChange={(e) => handleInputChange('last_name', e.target.value)}
+                placeholder="Doe"
                 className="w-full px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 required
               />

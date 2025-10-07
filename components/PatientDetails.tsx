@@ -79,7 +79,7 @@ export default function PatientDetails({ patient, onBack }: PatientDetailsProps)
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <label className="text-sm text-gray-500">Name</label>
-            <p className="font-medium text-gray-900">{patient.name}</p>
+            <p className="font-medium text-gray-900">{`${patient.first_name} ${patient.last_name}`}</p>
           </div>
           <div>
             <label className="text-sm text-gray-500">Date Of Birth</label>

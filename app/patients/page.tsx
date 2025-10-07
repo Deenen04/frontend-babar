@@ -12,7 +12,8 @@ import { patientsApi, patientsUtils, Patient as APIPatient } from '@/lib/api';
 
 export type Patient = {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   dateOfBirth: string;
   ext: string;
   phoneNo: string;

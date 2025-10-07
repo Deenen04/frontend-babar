@@ -14,7 +14,7 @@ interface PatientsListProps {
 
 export default function PatientsList({ patients, searchTerm, onSearchChange, onAddPatient, onViewPatient, onEditPatient, onDeletePatient }: PatientsListProps) {
   const filteredPatients = patients.filter(patient =>
-    patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.phoneNo.includes(searchTerm)
   );
 
@@ -88,11 +88,11 @@ export default function PatientsList({ patients, searchTerm, onSearchChange, onA
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredPatients.map((patient) => (
                 <tr key={patient.id} className="hover:bg-gray-50 cursor-pointer">
-                  <td 
+                  <td
                     onClick={() => onViewPatient(patient)}
                     className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
                   >
-                    {patient.name}
+                    {`${patient.first_name} ${patient.last_name}`}
                   </td>
                   <td 
                     onClick={() => onViewPatient(patient)}

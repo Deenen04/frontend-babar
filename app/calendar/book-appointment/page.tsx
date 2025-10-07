@@ -1,49 +1,310 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
+import {
+  appointmentsApi,
+  appointmentsUtils,
+  appointmentTypesApi,
+  AppointmentType,
+  CreateAppointmentRequest
+} from '@/lib/api/appointments';
+import { practitionersApi, practitionersUtils, Practitioner } from '@/lib/api/practitioners';
+import { patientsApi, patientsUtils, Patient as APIPatient } from '@/lib/api/patients';
+import { workingHoursApi, workingHoursUtils } from '@/lib/api/working-hours';
 
 interface BookingData {
+  patientId: string;
   patientName: string;
   contactNumber: string;
   countryCode: string;
   dateOfBirth: string;
   insuranceId: string;
   insuranceProvider: string;
-  selectedDate: number | null;
+  selectedDate: Date | null;
   selectedTime: string;
+  practitionerId: string;
+  appointmentTypeId: string;
 }
 
-const availableSlots = [
-  '10:30am', '11:30am', '02:30pm', '03:00pm', '03:30pm',
-  '04:30pm', '05:00pm', '05:30pm'
-];
-
 export default function BookAppointment() {
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState(10);
+  const router = useRouter();
+
+  // API Data State
+  const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
+  const [appointmentTypes, setAppointmentTypes] = useState<AppointmentType[]>([]);
+  const [patients, setPatients] = useState<APIPatient[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // UI State
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(new Date());
+
   const [bookingData, setBookingData] = useState<BookingData>({
-    patientName: 'John Doe',
+    patientId: '',
+    patientName: '',
     contactNumber: '',
-    countryCode: '+351',
-    dateOfBirth: '29 March 2003',
+    countryCode: '+1',
+    dateOfBirth: '',
     insuranceId: '',
     insuranceProvider: '',
-    selectedDate: 10,
-    selectedTime: ''
+    selectedDate: new Date(),
+    selectedTime: '',
+    practitionerId: '',
+    appointmentTypeId: ''
   });
 
-  const generateCalendarDays = () => {
-    const days = [];
-    for (let i = 1; i <= 31; i++) {
-      days.push(i);
+  // Load initial data
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Load practitioners
+        const practitionersData = await practitionersApi.getActivePractitioners();
+        setPractitioners(practitionersData);
+
+        // Load appointment types
+        const appointmentTypesData = await appointmentTypesApi.getAppointmentTypes();
+        setAppointmentTypes(appointmentTypesData);
+
+        // Load patients
+        const patientsData = await patientsApi.getActivePatients();
+        setPatients(patientsData);
+
+        // Set default values if data is available
+        if (practitionersData.length > 0) {
+          setBookingData(prev => ({ ...prev, practitionerId: practitionersData[0].id }));
+        }
+        if (appointmentTypesData.length > 0) {
+          setBookingData(prev => ({ ...prev, appointmentTypeId: appointmentTypesData[0].id }));
+        }
+
+      } catch (err) {
+        console.error('Error loading initial data:', err);
+        setError('Failed to load data. Please refresh the page.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, []);
+
+  // Load available slots when practitioner or date changes
+  useEffect(() => {
+    if (bookingData.practitionerId && bookingData.selectedDate) {
+      loadAvailableSlots();
     }
+  }, [bookingData.practitionerId, bookingData.selectedDate]);
+
+  // Load available time slots for selected practitioner and date
+  const loadAvailableSlots = async () => {
+    if (!bookingData.practitionerId || !bookingData.selectedDate) return;
+
+    try {
+      setError(null);
+
+      // Get practitioner's working hours for the selected day
+      const workingHours = await workingHoursApi.getByPractitioner(bookingData.practitionerId);
+      const dayOfWeek = bookingData.selectedDate.getDay().toString(); // 0 = Sunday, 1 = Monday, etc.
+
+      const daySchedule = workingHours.find(wh => wh.day_of_week === dayOfWeek && wh.is_active);
+
+      if (!daySchedule) {
+        setAvailableSlots([]);
+        return;
+      }
+
+      // Generate time slots based on working hours and appointment duration
+      const selectedAppointmentType = appointmentTypes.find(at => at.id === bookingData.appointmentTypeId);
+      const durationMinutes = selectedAppointmentType?.duration_minutes || 30;
+
+      const slots = generateTimeSlots(daySchedule.start_time, daySchedule.end_time, durationMinutes);
+
+      // Filter out slots that are already booked
+      const existingAppointments = await appointmentsApi.getByPractitioner(
+        bookingData.practitionerId,
+        { date: bookingData.selectedDate.toISOString().split('T')[0] }
+      );
+
+      const availableSlotsFiltered = slots.filter(slot => {
+        const slotTime = convertTo24Hour(slot);
+        return !existingAppointments.some(appointment => appointment.start_time === slotTime);
+      });
+
+      setAvailableSlots(availableSlotsFiltered);
+    } catch (err) {
+      console.error('Error loading available slots:', err);
+      setError('Failed to load available time slots.');
+      setAvailableSlots([]);
+    }
+  };
+
+  // Generate time slots based on working hours and appointment duration
+  const generateTimeSlots = (startTime: string, endTime: string, durationMinutes: number): string[] => {
+    const slots: string[] = [];
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+
+    for (let minutes = startMinutes; minutes + durationMinutes <= endMinutes; minutes += durationMinutes) {
+      const hour = Math.floor(minutes / 60);
+      const minute = minutes % 60;
+      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      slots.push(formatTimeTo12Hour(timeString));
+    }
+
+    return slots;
+  };
+
+  // Convert 12-hour format to 24-hour format for API
+  const convertTo24Hour = (time12h: string): string => {
+    const [time, period] = time12h.split(/(am|pm)/i);
+    let [hours, minutes] = time.split(':').map(Number);
+    if (period.toLowerCase() === 'pm' && hours !== 12) {
+      hours += 12;
+    } else if (period.toLowerCase() === 'am' && hours === 12) {
+      hours = 0;
+    }
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+  };
+
+  // Format time to 12-hour format for display
+  const formatTimeTo12Hour = (time24h: string): string => {
+    const [hours, minutes] = time24h.split(':').map(Number);
+    const period = hours >= 12 ? 'pm' : 'am';
+    const displayHour = hours % 12 || 12;
+    return `${displayHour}:${minutes.toString().padStart(2, '0')}${period}`;
+  };
+
+  // Handle patient selection
+  const handlePatientChange = (patientId: string) => {
+    const selectedPatient = patients.find(p => p.id === patientId);
+    if (selectedPatient) {
+      setBookingData(prev => ({
+        ...prev,
+        patientId,
+        patientName: `${selectedPatient.first_name} ${selectedPatient.last_name}`,
+        contactNumber: selectedPatient.phone_number,
+        countryCode: selectedPatient.phone_extension || '+1',
+        dateOfBirth: selectedPatient.date_of_birth || '',
+        insuranceId: selectedPatient.insurance_id || '',
+        insuranceProvider: selectedPatient.insurance_provider || ''
+      }));
+    }
+  };
+
+  // Handle appointment creation
+  const handleSaveAppointment = async () => {
+    if (!bookingData.patientId || !bookingData.selectedDate || !bookingData.selectedTime ||
+        !bookingData.practitionerId || !bookingData.appointmentTypeId) {
+      setError('Please fill in all required fields.');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const selectedAppointmentType = appointmentTypes.find(at => at.id === bookingData.appointmentTypeId);
+      const durationMinutes = selectedAppointmentType?.duration_minutes || 30;
+
+      const startTime24h = convertTo24Hour(bookingData.selectedTime);
+      const [hours, minutes] = startTime24h.split(':').map(Number);
+      const endTime = new Date(bookingData.selectedDate);
+      endTime.setHours(hours, minutes + durationMinutes);
+      const endTime24h = endTime.toTimeString().slice(0, 8);
+
+      const appointmentData: CreateAppointmentRequest = {
+        patient_phone: bookingData.contactNumber,
+        practitioner_id: bookingData.practitionerId,
+        appointment_type_id: bookingData.appointmentTypeId,
+        appointment_date: bookingData.selectedDate.toISOString().split('T')[0],
+        start_time: startTime24h,
+        end_time: endTime24h,
+        status: 'scheduled',
+        notes: '',
+        created_by: 'user-123' // This should come from auth context
+      };
+
+      await appointmentsApi.create(appointmentData);
+
+      // Redirect back to calendar
+      router.push('/calendar');
+    } catch (err) {
+      console.error('Error creating appointment:', err);
+      setError('Failed to create appointment. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const generateCalendarDays = () => {
+    const year = selectedCalendarDate.getFullYear();
+    const month = selectedCalendarDate.getMonth();
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay() + 1); // Start from Monday
+
+    const days = [];
+    const currentDate = new Date(startDate);
+
+    // Generate 6 weeks (42 days) to fill the calendar grid
+    for (let i = 0; i < 42; i++) {
+      days.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
     return days;
   };
 
   return (
     <DashboardLayout title="Book Appointment">
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="space-y-6">
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex">
+              <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="ml-3">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+              <button
+                onClick={() => setError(null)}
+                className="ml-auto text-red-400 hover:text-red-600"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading ? (
+          <div className="bg-white rounded-lg border border-gray-200">
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading appointment data...</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg border border-gray-200">
         {/* Header */}
         <div className="flex items-center gap-3 p-6 border-b border-gray-200">
           <Link 
@@ -65,12 +326,17 @@ export default function BookAppointment() {
                 Patient's Name *
               </label>
               <select
-                value={bookingData.patientName}
-                onChange={(e) => setBookingData(prev => ({ ...prev, patientName: e.target.value }))}
+                value={bookingData.patientId}
+                onChange={(e) => handlePatientChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                disabled={loading}
               >
-                <option value="John Doe">John Doe</option>
-                <option value="Jane Smith">Jane Smith</option>
+                <option value="">Select a patient</option>
+                {patients.map(patient => (
+                  <option key={patient.id} value={patient.id}>
+                    {patient.first_name} {patient.last_name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -83,17 +349,15 @@ export default function BookAppointment() {
                   value={bookingData.countryCode}
                   onChange={(e) => setBookingData(prev => ({ ...prev, countryCode: e.target.value }))}
                   className="px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-gray-50 flex items-center"
+                  disabled
                 >
-                  <option value="+351">🇺🇸 +351</option>
-                  <option value="+91">🇮🇳 +91</option>
-                  <option value="+1">🇺🇸 +1</option>
+                  <option value={bookingData.countryCode}>{bookingData.countryCode}</option>
                 </select>
                 <input
                   type="tel"
                   value={bookingData.contactNumber}
-                  onChange={(e) => setBookingData(prev => ({ ...prev, contactNumber: e.target.value }))}
-                  placeholder="Enter Mobile Number"
-                  className="flex-1 px-3 py-2 text-black border border-l-0 border-gray-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  readOnly
+                  className="flex-1 px-3 py-2 text-black border border-l-0 border-gray-300 rounded-r-md bg-gray-50"
                 />
               </div>
             </div>
@@ -106,8 +370,8 @@ export default function BookAppointment() {
                 <input
                   type="text"
                   value={bookingData.dateOfBirth}
-                  onChange={(e) => setBookingData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
-                  className="w-full px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                  readOnly
+                  className="w-full px-3 py-2 text-black border border-gray-300 rounded-md bg-gray-50"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,8 +388,8 @@ export default function BookAppointment() {
               <input
                 type="text"
                 value={bookingData.insuranceId}
-                onChange={(e) => setBookingData(prev => ({ ...prev, insuranceId: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                readOnly
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
               />
             </div>
 
@@ -136,8 +400,8 @@ export default function BookAppointment() {
               <input
                 type="text"
                 value={bookingData.insuranceProvider}
-                onChange={(e) => setBookingData(prev => ({ ...prev, insuranceProvider: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                readOnly
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
               />
             </div>
 
@@ -149,17 +413,73 @@ export default function BookAppointment() {
           {/* Calendar Section */}
           <div className="w-1/2 p-6 border-l border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Select Date and Time</h3>
+
+            {/* Practitioner Selection */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Practitioner *
+              </label>
+              <select
+                value={bookingData.practitionerId}
+                onChange={(e) => setBookingData(prev => ({ ...prev, practitionerId: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                disabled={loading}
+              >
+                <option value="">Select a practitioner</option>
+                {practitioners.map(practitioner => (
+                  <option key={practitioner.id} value={practitioner.id}>
+                    {practitioner.title} {practitioner.first_name} {practitioner.last_name} - {practitioner.specialization}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Appointment Type Selection */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Appointment Type *
+              </label>
+              <select
+                value={bookingData.appointmentTypeId}
+                onChange={(e) => setBookingData(prev => ({ ...prev, appointmentTypeId: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                disabled={loading}
+              >
+                <option value="">Select appointment type</option>
+                {appointmentTypes.map(type => (
+                  <option key={type.id} value={type.id}>
+                    {type.name} ({type.duration_minutes} min)
+                  </option>
+                ))}
+              </select>
+            </div>
             
             {/* Calendar */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
-                <button className="p-1 hover:bg-gray-100 rounded">
+                <button
+                  onClick={() => {
+                    const newDate = new Date(selectedCalendarDate);
+                    newDate.setMonth(newDate.getMonth() - 1);
+                    setSelectedCalendarDate(newDate);
+                  }}
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
-                <h4 className="font-medium">September 2025</h4>
-                <button className="p-1 hover:bg-gray-100 rounded">
+                <h4 className="font-medium">
+                  {selectedCalendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </h4>
+                <button
+                  onClick={() => {
+                    const newDate = new Date(selectedCalendarDate);
+                    newDate.setMonth(newDate.getMonth() + 1);
+                    setSelectedCalendarDate(newDate);
+                  }}
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
@@ -175,34 +495,55 @@ export default function BookAppointment() {
               </div>
 
               <div className="grid grid-cols-7 gap-1">
-                {generateCalendarDays().map(day => (
+                {generateCalendarDays().map((date, index) => {
+                  const isCurrentMonth = date.getMonth() === selectedCalendarDate.getMonth();
+                  const isToday = date.toDateString() === new Date().toDateString();
+                  const isSelected = bookingData.selectedDate && date.toDateString() === bookingData.selectedDate.toDateString();
+
+                  return (
                   <button
-                    key={day}
+                      key={index}
                     onClick={() => {
-                      setBookingData(prev => ({ ...prev, selectedDate: day }));
-                      setSelectedCalendarDate(day);
+                        const newDate = new Date(date);
+                        setBookingData(prev => ({ ...prev, selectedDate: newDate }));
                     }}
+                      disabled={!isCurrentMonth}
                     className={`w-8 h-8 text-sm rounded ${
-                      selectedCalendarDate === day
+                        isSelected
                         ? 'bg-primary text-white'
-                        : day === 10
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    {day}
+                          : isToday
+                          ? 'bg-blue-100 text-blue-600'
+                          : isCurrentMonth
+                          ? 'text-gray-700 hover:bg-gray-100'
+                          : 'text-gray-300'
+                      }`}
+                    >
+                      {date.getDate()}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* Available Slots */}
             <div>
               <h4 className="font-medium text-gray-900 mb-2">Available Slots</h4>
-              <p className="text-sm text-gray-600 mb-4">Thursday, 19th September</p>
+              {bookingData.selectedDate ? (
+                <p className="text-sm text-gray-600 mb-4">
+                  {bookingData.selectedDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-600 mb-4">Please select a date</p>
+              )}
               
               <div className="grid grid-cols-3 gap-2">
-                {availableSlots.map(slot => (
+                {availableSlots.length > 0 ? (
+                  availableSlots.map(slot => (
                   <button
                     key={slot}
                     onClick={() => setBookingData(prev => ({ ...prev, selectedTime: slot }))}
@@ -214,7 +555,15 @@ export default function BookAppointment() {
                   >
                     {slot}
                   </button>
-                ))}
+                  ))
+                ) : (
+                  <p className="col-span-3 text-sm text-gray-500 text-center py-4">
+                    {bookingData.practitionerId && bookingData.selectedDate
+                      ? 'No available slots for this date'
+                      : 'Select a practitioner and date to see available slots'
+                    }
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -224,18 +573,21 @@ export default function BookAppointment() {
         <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
           <Link
             href="/calendar"
-            className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
           >
             Cancel
           </Link>
-          <Link
-            href="/calendar"
-            className="px-6 py-2 bg-primary text-white rounded-md hover:bg-primary-hover"
+          <button
+            onClick={handleSaveAppointment}
+            disabled={saving || loading}
+            className="px-6 py-2 bg-primary text-white rounded-md hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Save
-          </Link>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
         </div>
-      </div>
+        </div>
+      )}
+    </div>
     </DashboardLayout>
   );
 }
