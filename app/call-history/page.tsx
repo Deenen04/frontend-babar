@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import CallDetailsModal from '../../components/CallDetailsModal';
 import { DatePicker } from '@/components/ui/date-picker';
-import { callsApi, callsUtils, type Call } from '@/lib/api';
+import { callsApi, callsUtils, type Call } from '@/lib/api/calls';
 
 type CallStatus = 'Live' | 'Answered' | 'Missed';
 type TabType = 'All' | 'Live' | 'Answered' | 'Chat';
@@ -19,6 +19,11 @@ interface CallRecord {
   date: string;
   hasTranscript?: boolean;
   isChat?: boolean;
+  transcript?: string;
+  aiSummary?: string;
+  notes?: string;
+  startTime?: string;
+  endTime?: string;
 }
 
 export default function CallHistory() {
@@ -63,8 +68,11 @@ export default function CallHistory() {
         // Fetch calls from API with filters (API handles search and date filtering)
         const apiCalls = await callsApi.getCalls(params);
 
+        // Ensure apiCalls is an array (handle potential API response format issues)
+        const callsArray = Array.isArray(apiCalls) ? apiCalls : ((apiCalls as any)?.results || []);
+
         // Convert API format to UI format using the utility function
-        const uiCalls = apiCalls.map(call => callsUtils.formatForDisplay(call));
+        const uiCalls = callsArray.map((call: Call) => callsUtils.formatForDisplay(call));
 
         setCalls(uiCalls);
         setTotalCalls(uiCalls.length);

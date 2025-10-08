@@ -12,11 +12,23 @@ interface CallRecord {
   date: string;
   hasTranscript?: boolean;
   isChat?: boolean;
+  transcript?: string;
+  aiSummary?: string;
+  notes?: string;
+  startTime?: string;
+  endTime?: string;
 }
 
 interface CallDetailsModalProps {
   call: CallRecord;
   onClose: () => void;
+}
+
+interface TranscriptEntry {
+  user: string;
+  bot: string;
+  label: string;
+  class_id: number;
 }
 
 interface ChatMessage {
@@ -61,6 +73,43 @@ export default function CallDetailsModal({ call, onClose }: CallDetailsModalProp
   const [totalTime] = useState('05:00');
   const [playbackSpeed, setPlaybackSpeed] = useState('1.5x');
 
+  // Parse transcript JSON and convert to ChatMessage format
+  const parseTranscript = (transcriptJson: string | undefined): ChatMessage[] => {
+    if (!transcriptJson) return [];
+
+    try {
+      const entries: TranscriptEntry[] = JSON.parse(transcriptJson);
+      const messages: ChatMessage[] = [];
+
+      entries.forEach((entry, index) => {
+        // Add patient message if it exists
+        if (entry.user && entry.user.trim()) {
+          messages.push({
+            id: `patient-${index}`,
+            sender: 'patient',
+            message: entry.user.trim(),
+          });
+        }
+
+        // Add AI/bot message if it exists
+        if (entry.bot && entry.bot.trim()) {
+          messages.push({
+            id: `ai-${index}`,
+            sender: 'ai',
+            message: entry.bot.trim(),
+          });
+        }
+      });
+
+      return messages;
+    } catch (error) {
+      console.error('Error parsing transcript:', error);
+      return [];
+    }
+  };
+
+  const transcriptMessages = parseTranscript(call.transcript);
+
   const formatPhoneNumber = (phone: string) => {
     return phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2*$3');
   };
@@ -104,7 +153,7 @@ export default function CallDetailsModal({ call, onClose }: CallDetailsModalProp
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium text-gray-900">Call Details</h3>
-              <span className="text-sm text-gray-500">Date- 12/09/2025</span>
+              <span className="text-sm text-gray-500">Date- {call.date}</span>
             </div>
 
             {/* Call Duration and Type */}
@@ -115,7 +164,9 @@ export default function CallDetailsModal({ call, onClose }: CallDetailsModalProp
                 </div>
                 <div>
                   <span className="text-sm font-medium text-gray-900">Start- End Time</span>
-                  <span className="text-sm text-gray-500 ml-2">12:00- 12:05 Am (05 minutes)</span>
+                  <span className="text-sm text-gray-500 ml-2">
+                    {call.startTime || 'N/A'}{call.endTime ? ` - ${call.endTime}` : ''} ({call.duration})
+                  </span>
                 </div>
               </div>
               
@@ -206,27 +257,23 @@ export default function CallDetailsModal({ call, onClose }: CallDetailsModalProp
           <div className="max-h-96 overflow-y-auto">
             {activeTab === 'summary' ? (
               <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-gray-700 text-sm leading-relaxed">
-                  "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor 
-                  incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud 
-                  exercitation "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do 
-                  eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim 
-                  veniam, quis nostrud exercitation "Lorem ipsum dolor sit amet, consectetur 
-                  adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
-                  Ut enim ad minim veniam, quis nostrud exercitation
-                </p>
-                <br />
-                <p className="text-gray-700 text-sm leading-relaxed">
-                  "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor 
-                  incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud 
-                  exercitation "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do 
-                  eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim 
-                  veniam, quis nostrud exercitation
-                </p>
+                {call.aiSummary ? (
+                  <p className="text-gray-700 text-sm leading-relaxed">
+                    {call.aiSummary}
+                  </p>
+                ) : (
+                  <p className="text-gray-500 text-sm">No summary available</p>
+                )}
+                {call.notes && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Notes</h4>
+                    <p className="text-gray-700 text-sm leading-relaxed">{call.notes}</p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
-                {sampleTranscript.map((message) => (
+                {transcriptMessages.length > 0 ? transcriptMessages.map((message) => (
                   <div key={message.id} className="flex gap-3">
                     {/* Avatar */}
                     <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -265,7 +312,11 @@ export default function CallDetailsModal({ call, onClose }: CallDetailsModalProp
                       )}
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 text-sm">No transcript available</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

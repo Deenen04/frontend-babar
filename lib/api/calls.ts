@@ -187,7 +187,7 @@ export const callsUtils = {
 
     return {
       id: call.id,
-      patientName: call.patient_id ? `Patient ${call.patient_id}` : 'Unknown Patient',
+      patientName: call.patient_name || (call.patient_id ? `Patient ${call.patient_id}` : 'Unknown Patient'),
       status: call.call_status as 'Live' | 'Answered' | 'Missed',
       phoneNo: call.phone_number,
       callType: mapCallType(call.call_type),
@@ -198,6 +198,16 @@ export const callsUtils = {
       transcript: call.transcript,
       aiSummary: call.ai_summary,
       notes: call.notes,
+      startTime: startTime.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }),
+      endTime: endTime ? endTime.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }) : undefined,
     };
   },
 
