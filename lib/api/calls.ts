@@ -4,6 +4,7 @@ import { axiosInstance } from '../axios';
 export interface Call {
   id: string;
   patient_id?: string;
+  patient_name?: string;
   phone_number: string;
   call_type: string;
   call_status: string;
