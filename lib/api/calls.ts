@@ -53,19 +53,19 @@ export interface CallResponse {
 
 // Calls API functions
 export const callsApi = {
-  // Get all calls with pagination and filtering
+  // Get all calls (API returns array directly)
   getAll: async (params?: {
     page?: number;
     limit?: number;
     status?: string;
     search?: string;
     start_date?: string;
-  }): Promise<CallResponse> => {
+  }): Promise<Call[]> => {
     const response = await axiosInstance.get('/calls', { params });
-    return response.data as CallResponse;
+    return response.data as Call[];
   },
 
-  // Get calls data (extract results from paginated response)
+  // Get calls data (alias for getAll)
   getCalls: async (params?: {
     page?: number;
     limit?: number;

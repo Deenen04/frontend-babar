@@ -36,16 +36,15 @@ export interface WorkingHourResponse {
 
 // Working Hours API functions
 export const workingHoursApi = {
-  // Get all working hours with pagination
-  getAll: async (params?: { page?: number; limit?: number }): Promise<WorkingHourResponse> => {
+  // Get all working hours (API returns array directly)
+  getAll: async (params?: { page?: number; limit?: number }): Promise<WorkingHour[]> => {
     const response = await axiosInstance.get('/working-hours', { params });
-    return response.data as WorkingHourResponse;
+    return response.data as WorkingHour[];
   },
 
-  // Get working hours data (extract results from paginated response)
+  // Get working hours data (alias for getAll)
   getWorkingHours: async (params?: { page?: number; limit?: number }): Promise<WorkingHour[]> => {
-    const response = await workingHoursApi.getAll(params);
-    return response.results;
+    return await workingHoursApi.getAll(params);
   },
 
   // Get single working hour
@@ -74,20 +73,35 @@ export const workingHoursApi = {
 
   // Get working hours by practitioner
   getByPractitioner: async (practitionerId: string, params?: { page?: number; limit?: number }): Promise<WorkingHour[]> => {
-    const workingHours = await workingHoursApi.getWorkingHours(params);
-    return workingHours.filter(wh => wh.practitioner_id === practitionerId);
+    try {
+      const workingHours = await workingHoursApi.getWorkingHours(params);
+      return workingHours.filter(wh => wh.practitioner_id === practitionerId);
+    } catch (error) {
+      console.error('Error fetching working hours by practitioner:', error);
+      return [];
+    }
   },
 
   // Get working hours by day of week
   getByDayOfWeek: async (dayOfWeek: string, params?: { page?: number; limit?: number }): Promise<WorkingHour[]> => {
-    const workingHours = await workingHoursApi.getWorkingHours(params);
-    return workingHours.filter(wh => wh.day_of_week === dayOfWeek);
+    try {
+      const workingHours = await workingHoursApi.getWorkingHours(params);
+      return workingHours.filter(wh => wh.day_of_week === dayOfWeek);
+    } catch (error) {
+      console.error('Error fetching working hours by day:', error);
+      return [];
+    }
   },
 
   // Get active working hours only
   getActiveWorkingHours: async (params?: { page?: number; limit?: number }): Promise<WorkingHour[]> => {
-    const workingHours = await workingHoursApi.getWorkingHours(params);
-    return workingHours.filter(wh => wh.is_active);
+    try {
+      const workingHours = await workingHoursApi.getWorkingHours(params);
+      return workingHours.filter(wh => wh.is_active);
+    } catch (error) {
+      console.error('Error fetching active working hours:', error);
+      return [];
+    }
   },
 };
 

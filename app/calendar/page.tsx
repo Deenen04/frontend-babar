@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { DatePicker } from '@/components/ui/date-picker';
-import { appointmentsApi, appointmentTypesApi, type Appointment, type AppointmentType } from '@/lib/api';
+import { appointmentsApi, appointmentTypesApi, workingHoursApi, type Appointment, type AppointmentType, type WorkingHour } from '@/lib/api';
 import { axiosInstance } from '@/lib/axios';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type ViewType = 'Day' | 'Week';
 type StaffType = 'Doctor 1' | 'Doctor 2' | 'Nurse' | 'Pragmafare';
@@ -41,7 +42,126 @@ export default function Calendar() {
   const [uiAppointments, setUiAppointments] = useState<UIAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal and working hours state
+  const [showWorkingHoursModal, setShowWorkingHoursModal] = useState(false);
+  const [workingHours, setWorkingHours] = useState<WorkingHour[]>([]);
+  const [workingHoursLoading, setWorkingHoursLoading] = useState(false);
+
+  // Working hours form state
+  const [selectedStaff, setSelectedStaff] = useState<string>('');
+  const [workingHoursForm, setWorkingHoursForm] = useState<Record<string, { active: boolean; startTime: string; endTime: string }>>({
+    monday: { active: true, startTime: '09:00', endTime: '17:00' },
+    tuesday: { active: true, startTime: '09:00', endTime: '17:00' },
+    wednesday: { active: true, startTime: '09:00', endTime: '17:00' },
+    thursday: { active: true, startTime: '09:00', endTime: '17:00' },
+    friday: { active: true, startTime: '09:00', endTime: '17:00' },
+    saturday: { active: false, startTime: '09:00', endTime: '17:00' },
+    sunday: { active: false, startTime: '09:00', endTime: '17:00' },
+  });
+  const [saving, setSaving] = useState(false);
   const staffTabs: StaffType[] = ['Doctor 1', 'Doctor 2', 'Nurse', 'Pragmafare'];
+
+  // Working hours management functions
+  const loadWorkingHours = async () => {
+    setWorkingHoursLoading(true);
+    try {
+      const hours = await workingHoursApi.getWorkingHours();
+      setWorkingHours(hours);
+    } catch (error) {
+      console.error('Error loading working hours:', error);
+      setError('Failed to load working hours');
+    } finally {
+      setWorkingHoursLoading(false);
+    }
+  };
+
+  const handleSetWorkingHours = () => {
+    setShowWorkingHoursModal(true);
+    loadWorkingHours();
+  };
+
+  const handleFormChange = (day: string, field: 'active' | 'startTime' | 'endTime', value: boolean | string) => {
+    setWorkingHoursForm(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        [field]: value
+      }
+    }));
+  };
+
+  const saveWorkingHours = async () => {
+    if (!selectedStaff) {
+      setError('Please select a staff member');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Map staff names to practitioner IDs (this would typically come from your backend)
+      const staffToPractitionerId: Record<string, string> = {
+        'Doctor 1': 'user_august',
+        'Doctor 2': 'user_terrani',
+        'Nurse': 'nurse_001',
+        'Pragmafare': 'pragmafare_001'
+      };
+
+      const practitionerId = staffToPractitionerId[selectedStaff];
+      if (!practitionerId) {
+        throw new Error('Invalid staff member selected');
+      }
+
+      // Save working hours for each day
+      const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+      for (const day of daysOfWeek) {
+        const dayData = workingHoursForm[day];
+        const dayOfWeek = daysOfWeek.indexOf(day); // 0 = Monday, 1 = Tuesday, etc.
+
+        // Check if working hours already exist for this practitioner and day
+        const existingHours = workingHours.find(
+          wh => wh.practitioner_id === practitionerId && wh.day_of_week === dayOfWeek.toString()
+        );
+
+        if (dayData.active) {
+          const workingHourData = {
+            practitioner_id: practitionerId,
+            day_of_week: dayOfWeek.toString(),
+            start_time: dayData.startTime,
+            end_time: dayData.endTime,
+            is_active: true
+          };
+
+          if (existingHours) {
+            // Update existing working hours
+            await workingHoursApi.update(existingHours.id, workingHourData);
+          } else {
+            // Create new working hours
+            await workingHoursApi.create(workingHourData);
+          }
+        } else if (existingHours) {
+          // Deactivate existing working hours for this day
+          await workingHoursApi.update(existingHours.id, { is_active: false });
+        }
+      }
+
+      // Reload working hours to reflect changes
+      await loadWorkingHours();
+
+      // Close modal
+      setShowWorkingHoursModal(false);
+
+      // Show success message (you might want to add a toast notification here)
+      console.log('Working hours saved successfully');
+
+    } catch (error) {
+      console.error('Error saving working hours:', error);
+      setError('Failed to save working hours. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Load appointments and appointment types from API
   useEffect(() => {
@@ -494,7 +614,10 @@ export default function Calendar() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+            <button
+              onClick={handleSetWorkingHours}
+              className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -605,6 +728,139 @@ export default function Calendar() {
           )}
         </div>
       </div>
+
+      {/* Working Hours Modal */}
+      <Dialog open={showWorkingHoursModal} onOpenChange={setShowWorkingHoursModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex justify-between items-center w-full">
+              <DialogTitle className="text-2xl font-bold text-gray-900">Set Working Hours</DialogTitle>
+              <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Holiday
+              </button>
+            </div>
+          </DialogHeader>
+
+          {/* Controls Section */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <span className="text-gray-600">Select working Day and time</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Member:</span>
+                  <select
+                    value={selectedStaff}
+                    onChange={(e) => setSelectedStaff(e.target.value)}
+                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Doctor</option>
+                    {staffTabs.filter(staff => staff !== 'Doctor 1').map(staff => (
+                      <option key={staff} value={staff}>{staff}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <button className="flex items-center gap-2 px-3 py-1 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Operation Day
+              </button>
+            </div>
+          </div>
+
+          {/* Weekly Schedule */}
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Schedule</h3>
+
+            {/* Monday Rows */}
+            {[
+              { date: '9 Sept 2025', startTime: '05:00 AM', endTime: '05:00 AM' },
+              { date: '9 Sept 2025', startTime: '05:00 AM', endTime: '05:00 AM' },
+              { date: '9 Sept 2025', startTime: '05:00 AM', endTime: '05:00 AM' },
+              { date: '9 Sept 2025', startTime: '05:00 AM', endTime: '05:00 AM' },
+              { date: '9 Sept 2025', startTime: '05:00 AM', endTime: '05:00 AM' },
+              { date: '9 Sept 2025', startTime: '05:00 AM', endTime: '05:00 AM' },
+              { date: '9 Sept 2025', startTime: '05:00 AM', endTime: '05:00 AM' }
+            ].map((monday, index) => (
+              <div key={index} className="flex items-center gap-4 p-3 bg-white border border-gray-200 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <span className="font-medium text-gray-900 min-w-[80px]">Monday</span>
+                  <span className="text-sm text-gray-500">{monday.date}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      id={`active-${index}`}
+                    />
+                    <label
+                      htmlFor={`active-${index}`}
+                      className={`flex items-center cursor-pointer w-12 h-6 rounded-full transition-colors ${
+                        true ? 'bg-primary' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block w-5 h-5 rounded-full bg-white shadow transform transition-transform ${
+                          true ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </label>
+                    <span className="ml-2 text-sm text-gray-700">Active</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 flex-1 justify-end">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">Start</label>
+                    <select className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary">
+                      <option value="05:00 AM">05:00 AM</option>
+                      <option value="06:00 AM">06:00 AM</option>
+                      <option value="07:00 AM">07:00 AM</option>
+                      <option value="08:00 AM">08:00 AM</option>
+                      <option value="09:00 AM">09:00 AM</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">End</label>
+                    <select className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary">
+                      <option value="05:00 AM">05:00 AM</option>
+                      <option value="06:00 PM">06:00 PM</option>
+                      <option value="07:00 PM">07:00 PM</option>
+                      <option value="08:00 PM">08:00 PM</option>
+                      <option value="09:00 PM">09:00 PM</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <button
+              onClick={() => setShowWorkingHoursModal(false)}
+              disabled={saving}
+              className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={saveWorkingHours}
+              disabled={saving || !selectedStaff}
+              className="px-6 py-2 bg-primary text-white rounded-md hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </DashboardLayout>
   );

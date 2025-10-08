@@ -136,15 +136,20 @@ export const appointmentsApi = {
 
   // Get upcoming appointments
   getUpcoming: async (days: number = 7, params?: AppointmentQueryParams): Promise<Appointment[]> => {
-    const appointments = await appointmentsApi.getAppointments(params);
-    const today = new Date();
-    const futureDate = new Date();
-    futureDate.setDate(today.getDate() + days);
+    try {
+      const appointments = await appointmentsApi.getAppointments(params);
+      const today = new Date();
+      const futureDate = new Date();
+      futureDate.setDate(today.getDate() + days);
 
-    return appointments.filter(appointment => {
-      const appointmentDate = new Date(appointment.appointment_date);
-      return appointmentDate >= today && appointmentDate <= futureDate;
-    });
+      return appointments.filter(appointment => {
+        const appointmentDate = new Date(appointment.appointment_date);
+        return appointmentDate >= today && appointmentDate <= futureDate;
+      });
+    } catch (error) {
+      console.error('Error fetching upcoming appointments:', error);
+      return [];
+    }
   },
 };
 
@@ -157,16 +162,15 @@ export interface AppointmentTypeResponse {
 
 // Appointment Types API functions
 export const appointmentTypesApi = {
-  // Get all appointment types with pagination
-  getAll: async (params?: { page?: number; limit?: number }): Promise<AppointmentTypeResponse> => {
+  // Get all appointment types (API returns array directly)
+  getAll: async (params?: { page?: number; limit?: number }): Promise<AppointmentType[]> => {
     const response = await axiosInstance.get('/appointment-types', { params });
-    return response.data as any;
+    return response.data as AppointmentType[];
   },
 
-  // Get appointment types data (extract results from paginated response)
+  // Get appointment types data (alias for getAll)
   getAppointmentTypes: async (params?: { page?: number; limit?: number }): Promise<AppointmentType[]> => {
-    const response = await appointmentTypesApi.getAll(params);
-    return response.results;
+    return await appointmentTypesApi.getAll(params);
   },
 
   // Get single appointment type

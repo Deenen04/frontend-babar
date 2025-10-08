@@ -42,16 +42,15 @@ export interface PractitionerResponse {
 
 // Practitioners API functions
 export const practitionersApi = {
-  // Get all practitioners with pagination
-  getAll: async (params?: { page?: number; limit?: number }): Promise<PractitionerResponse> => {
+  // Get all practitioners (API returns array directly)
+  getAll: async (params?: { page?: number; limit?: number }): Promise<Practitioner[]> => {
     const response = await axiosInstance.get('/practitioners', { params });
-    return response.data as PractitionerResponse;
+    return response.data as Practitioner[];
   },
 
-  // Get practitioners data (extract results from paginated response)
+  // Get practitioners data (alias for getAll)
   getPractitioners: async (params?: { page?: number; limit?: number }): Promise<Practitioner[]> => {
-    const response = await practitionersApi.getAll(params);
-    return response.results;
+    return await practitionersApi.getAll(params);
   },
 
   // Get single practitioner
@@ -80,14 +79,24 @@ export const practitionersApi = {
 
   // Get practitioners by specialization
   getBySpecialization: async (specialization: string, params?: { page?: number; limit?: number }): Promise<Practitioner[]> => {
-    const practitioners = await practitionersApi.getPractitioners(params);
-    return practitioners.filter(practitioner => practitioner.specialization === specialization);
+    try {
+      const practitioners = await practitionersApi.getPractitioners(params);
+      return practitioners.filter(practitioner => practitioner.specialization === specialization);
+    } catch (error) {
+      console.error('Error fetching practitioners by specialization:', error);
+      return [];
+    }
   },
 
   // Get active practitioners only
   getActivePractitioners: async (params?: { page?: number; limit?: number }): Promise<Practitioner[]> => {
-    const practitioners = await practitionersApi.getPractitioners(params);
-    return practitioners.filter(practitioner => practitioner.is_active);
+    try {
+      const practitioners = await practitionersApi.getPractitioners(params);
+      return practitioners.filter(practitioner => practitioner.is_active);
+    } catch (error) {
+      console.error('Error fetching active practitioners:', error);
+      return [];
+    }
   },
 };
 

@@ -59,19 +59,19 @@ export interface ReminderResponse {
 
 // Reminders API functions
 export const remindersApi = {
-  // Get all reminders with pagination and filtering
+  // Get all reminders (API returns array directly)
   getAll: async (params?: {
     page?: number;
     limit?: number;
     status?: string;
     search?: string;
     start_date?: string;
-  }): Promise<ReminderResponse> => {
+  }): Promise<Reminder[]> => {
     const response = await axiosInstance.get('/reminders', { params });
-    return response.data as ReminderResponse;
+    return response.data as Reminder[];
   },
 
-  // Get reminders data with filtering support
+  // Get reminders data (alias for getAll)
   getReminders: async (params?: {
     page?: number;
     limit?: number;
@@ -109,33 +109,53 @@ export const remindersApi = {
 
   // Get reminders by status
   getByStatus: async (status: string, params?: { page?: number; limit?: number }): Promise<Reminder[]> => {
-    const reminders = await remindersApi.getReminders(params);
-    return reminders.filter(reminder => reminder.status === status);
+    try {
+      const reminders = await remindersApi.getReminders(params);
+      return reminders.filter(reminder => reminder.status === status);
+    } catch (error) {
+      console.error('Error fetching reminders by status:', error);
+      return [];
+    }
   },
 
   // Get reminders by priority
   getByPriority: async (priority: string, params?: { page?: number; limit?: number }): Promise<Reminder[]> => {
-    const reminders = await remindersApi.getReminders(params);
-    return reminders.filter(reminder => reminder.priority === priority);
+    try {
+      const reminders = await remindersApi.getReminders(params);
+      return reminders.filter(reminder => reminder.priority === priority);
+    } catch (error) {
+      console.error('Error fetching reminders by priority:', error);
+      return [];
+    }
   },
 
   // Get reminders by patient phone
   getByPatientPhone: async (phoneNumber: string, params?: { page?: number; limit?: number }): Promise<Reminder[]> => {
-    const reminders = await remindersApi.getReminders(params);
-    return reminders.filter(reminder => reminder.patient_phone === phoneNumber);
+    try {
+      const reminders = await remindersApi.getReminders(params);
+      return reminders.filter(reminder => reminder.patient_phone === phoneNumber);
+    } catch (error) {
+      console.error('Error fetching reminders by patient phone:', error);
+      return [];
+    }
   },
 
   // Get reminders by date range
   getByDateRange: async (startDate: string, endDate?: string, params?: { page?: number; limit?: number }): Promise<Reminder[]> => {
-    const reminders = await remindersApi.getReminders(params);
-    const start = new Date(startDate);
-    const end = endDate ? new Date(endDate) : new Date();
+    try {
+      const reminders = await remindersApi.getReminders(params);
+      const start = new Date(startDate);
+      const end = endDate ? new Date(endDate) : new Date();
 
-    return reminders.filter(reminder => {
-      if (!reminder.due_date) return false;
-      const reminderDate = new Date(reminder.due_date);
-      return reminderDate >= start && reminderDate <= end;
-    });
+      return reminders.filter(reminder => {
+        if (!reminder.due_date) return false;
+        const reminderDate = new Date(reminder.due_date);
+        return reminderDate >= start && reminderDate <= end;
+      });
+    } catch (error) {
+      console.error('Error fetching reminders by date range:', error);
+      return [];
+    }
   },
 };
 

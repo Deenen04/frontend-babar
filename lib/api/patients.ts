@@ -73,16 +73,15 @@ export interface PatientResponse {
 
 // Patients API functions
 export const patientsApi = {
-  // Get all patients with pagination
-  getAll: async (params?: { page?: number; limit?: number }): Promise<PatientResponse> => {
-    const response = await axiosInstance.get('/patients', { params });
-    return response.data as PatientResponse;
-  },
-
-  // Get patients data (API returns array directly)
-  getPatients: async (params?: { page?: number; limit?: number }): Promise<Patient[]> => {
+  // Get all patients (API returns array directly)
+  getAll: async (params?: { page?: number; limit?: number }): Promise<Patient[]> => {
     const response = await axiosInstance.get('/patients', { params });
     return response.data as Patient[];
+  },
+
+  // Get patients data (alias for getAll)
+  getPatients: async (params?: { page?: number; limit?: number }): Promise<Patient[]> => {
+    return await patientsApi.getAll(params);
   },
 
   // Get single patient
@@ -111,16 +110,26 @@ export const patientsApi = {
 
   // Search patients by phone number
   searchByPhone: async (phoneNumber: string, params?: { page?: number; limit?: number }): Promise<Patient[]> => {
-    const patients = await patientsApi.getPatients(params);
-    return patients.filter(patient =>
-      patient.phone_number.includes(phoneNumber)
-    );
+    try {
+      const patients = await patientsApi.getPatients(params);
+      return patients.filter(patient =>
+        patient.phone_number.includes(phoneNumber)
+      );
+    } catch (error) {
+      console.error('Error searching patients by phone:', error);
+      return [];
+    }
   },
 
   // Get active patients only
   getActivePatients: async (params?: { page?: number; limit?: number }): Promise<Patient[]> => {
-    const patients = await patientsApi.getPatients(params);
-    return patients.filter(patient => patient.is_active);
+    try {
+      const patients = await patientsApi.getPatients(params);
+      return patients.filter(patient => patient.is_active);
+    } catch (error) {
+      console.error('Error fetching active patients:', error);
+      return [];
+    }
   },
 };
 
