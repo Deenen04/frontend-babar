@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import PatientsList from '@/components/PatientsList';
@@ -30,7 +30,7 @@ export type Patient = {
 
 export type ViewType = 'list' | 'add' | 'edit' | 'details';
 
-export default function Patients() {
+function PatientsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [currentView, setCurrentView] = useState<ViewType>('list');
@@ -232,5 +232,13 @@ export default function Patients() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function Patients() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PatientsContent />
+    </Suspense>
   );
 }

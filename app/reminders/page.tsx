@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -18,7 +18,7 @@ interface Reminder {
   status: 'pending' | 'completed';
 }
 
-export default function Reminders() {
+function RemindersContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
@@ -365,5 +365,13 @@ export default function Reminders() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function Reminders() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <RemindersContent />
+    </Suspense>
   );
 }

@@ -103,20 +103,6 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 View All
               </button>
             </div>
-            
-            <div className="mb-4">
-              <label className="text-sm text-gray-600 mb-2 block">Member:</label>
-              <select className="w-full p-2 border border-gray-300 rounded-md text-sm" disabled={isLoadingPractitioners}>
-                <option value="">
-                  {isLoadingPractitioners ? 'Loading members...' : 'All Members'}
-                </option>
-                {practitioners && practitioners.map((practitioner) => (
-                  <option key={practitioner.id} value={practitioner.id}>
-                    {practitioner.title} {practitioner.first_name} {practitioner.last_name}
-                  </option>
-                ))}
-              </select>
-            </div>
 
             <div className="space-y-3">
               {isLoadingAppointments ? (
