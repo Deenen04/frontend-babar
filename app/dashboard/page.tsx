@@ -2,15 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { callsApi, type Call } from '@/lib/api/calls';
-import { appointmentsApi, type Appointment } from '@/lib/api/appointments';
-import { remindersApi, type Reminder } from '@/lib/api/reminders';
+import { dashboardApi, type DashboardResponse, type TodayAppointment, type DashboardReminder, type LiveCall } from '@/lib/api/dashboard';
 
 export default function Dashboard() {
-  const [totalMinutes, setTotalMinutes] = useState<number>(0);
-  const [appointmentsBooked, setAppointmentsBooked] = useState<number>(0);
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [liveCalls, setLiveCalls] = useState<Call[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -21,33 +16,9 @@ export default function Dashboard() {
     try {
       setLoading(true);
 
-      // Fetch calls data for total minutes and live calls using API caller
-      const callsData = await callsApi.getCalls();
-
-      // Calculate total minutes from all calls
-      const totalMinutesCalculated = callsData.reduce((total: number, call: Call) => {
-        return total + (call.duration_seconds / 60); // Convert seconds to minutes
-      }, 0);
-      setTotalMinutes(Math.round(totalMinutesCalculated));
-
-      // Filter live/ongoing calls
-      const liveCallsFiltered = callsData.filter((call: Call) =>
-        call.call_status === 'ongoing' || call.call_status === 'active'
-      );
-      setLiveCalls(liveCallsFiltered);
-
-      // Fetch appointments data using API caller
-      const appointmentsData = await appointmentsApi.getAppointments();
-
-      // Count appointments booked (assuming 'scheduled' status from API)
-      const bookedCount = (appointmentsData || []).filter((appointment: Appointment) =>
-        appointment.status === 'scheduled' || appointment.status === 'confirmed'
-      ).length;
-      setAppointmentsBooked(bookedCount);
-
-      // Fetch reminders data using API caller
-      const remindersData = await remindersApi.getReminders();
-      setReminders(remindersData.slice(0, 3)); // Show only first 3 reminders
+      // Fetch dashboard data using single API call
+      const data = await dashboardApi.getDashboard();
+      setDashboardData(data);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -102,7 +73,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-sm text-gray-600">Total Calling Minutes</p>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-gray-900">{totalMinutes.toLocaleString()}</span>
+                    <span className="text-3xl font-bold text-gray-900">{dashboardData ? parseFloat(dashboardData.overview.total_calling_minutes).toLocaleString() : 0}</span>
                     <span className="text-sm text-gray-500">min</span>
                   </div>
                 </div>
@@ -119,7 +90,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Appointments Booked by AI</p>
-                  <span className="text-3xl font-bold text-gray-900">{appointmentsBooked}</span>
+                  <span className="text-3xl font-bold text-gray-900">{dashboardData ? dashboardData.overview.appointments_booked_by_ai : 0}</span>
                 </div>
               </div>
             </div>
@@ -136,13 +107,13 @@ export default function Dashboard() {
           </div>
           
           <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
-            {reminders.length === 0 ? (
+            {(!dashboardData || dashboardData.reminders.length === 0) ? (
               <div className="p-4 text-center text-gray-500">
                 No reminders found
               </div>
             ) : (
-              reminders.map((reminder) => (
-                <div key={reminder.id} className="p-4 flex items-center justify-between">
+              dashboardData.reminders.map((reminder, index) => (
+                <div key={`${reminder.patient_phone}-${index}`} className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
                       <span className="text-xs font-medium text-gray-600">
@@ -150,7 +121,7 @@ export default function Dashboard() {
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{reminder.title}</p>
+                      <p className="font-medium text-gray-900">{reminder.reminder_type} for {reminder.patient_phone}</p>
                       <div className="flex items-center gap-2">
                         <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${getPriorityColor(reminder.priority)}`}>
                           {reminder.priority}
@@ -158,6 +129,11 @@ export default function Dashboard() {
                         <span className={`text-sm ${getReminderTypeColor(reminder.reminder_type)}`}>
                           Type: {reminder.reminder_type}
                         </span>
+                        {(reminder.due_date !== 'None' && reminder.due_time !== 'None') && (
+                          <span className="text-sm text-gray-500">
+                            Due: {reminder.due_date} {reminder.due_time}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -180,35 +156,48 @@ export default function Dashboard() {
           </div>
           
           <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
-            {liveCalls.length === 0 ? (
+            {(!dashboardData || dashboardData.live_calls.length === 0) ? (
               <div className="p-4 text-center text-gray-500">
                 No live calls at the moment
               </div>
             ) : (
-              liveCalls.map((call) => (
-                <div key={call.id} className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900">
-                        {call.patient_id ? `Patient ${call.patient_id.slice(0, 8)}...` : 'Unknown Patient'}
-                      </span>
-                      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                        {call.call_type === 'incoming' ? 'Incoming call' : 'Outgoing call'}
-                      </span>
-                      <span className="text-sm text-gray-500">{call.phone_number}</span>
+              dashboardData.live_calls.map((call, index) => {
+                let transcriptText = 'No transcription available';
+                try {
+                  const transcriptData = JSON.parse(call.transcript_snippet);
+                  if (Array.isArray(transcriptData) && transcriptData.length > 0) {
+                    const lastEntry = transcriptData[transcriptData.length - 1];
+                    transcriptText = lastEntry.bot || lastEntry.user || 'No transcription available';
+                  }
+                } catch (e) {
+                  transcriptText = call.transcript_snippet || 'No transcription available';
+                }
+
+                return (
+                  <div key={`${call.phone_number}-${index}`} className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900">
+                          {call.patient_id ? `Patient ${call.patient_id.slice(0, 8)}...` : 'Unknown Patient'}
+                        </span>
+                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                          {call.call_type === 'incoming' ? 'Incoming call' : 'Outgoing call'}
+                        </span>
+                        <span className="text-sm text-gray-500">{call.phone_number}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 font-medium mb-1">Transcription</p>
+                      <p className="text-sm text-gray-500">
+                        {transcriptText.length > 100
+                          ? `${transcriptText.substring(0, 100)}...`
+                          : transcriptText
+                        }
+                      </p>
                     </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600 font-medium mb-1">Transcription</p>
-                    <p className="text-sm text-gray-500">
-                      {call.transcript && call.transcript.length > 100
-                        ? `${call.transcript.substring(0, 100)}...`
-                        : call.transcript || 'No transcription available'
-                      }
-                    </p>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>

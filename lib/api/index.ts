@@ -8,4 +8,5 @@ export * from './users';
 export * from './practitioners';
 export * from './working-hours';
 export * from './audit-log';
+export * from './dashboard';
 export { axiosInstance } from '../axios';
