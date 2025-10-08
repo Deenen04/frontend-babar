@@ -21,10 +21,12 @@ export default function Settings() {
   });
   const [formData, setFormData] = useState({
     accountName: '',
-    email: ''
+    email: '',
+    clientName: ''
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Load dummy settings data
   useEffect(() => {
@@ -37,7 +39,8 @@ export default function Settings() {
 
     setFormData({
       accountName: `${dummyUser.first_name} ${dummyUser.last_name}`,
-      email: dummyUser.email
+      email: dummyUser.email,
+      clientName: 'ABC Healthcare Clinic'
     });
 
     // Dummy AI bot setting (enabled by default)
@@ -57,8 +60,12 @@ export default function Settings() {
       console.log('Settings saved locally:', {
         accountName: formData.accountName,
         email: formData.email,
+        clientName: formData.clientName,
         aiBotEnabled
       });
+
+      // Exit edit mode after saving
+      setIsEditMode(false);
 
     } catch (err) {
       console.error('Error saving settings:', err);
@@ -279,22 +286,34 @@ export default function Settings() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-gray-900">All Settings</h1>
           <div className="flex gap-2">
-            <button
-              onClick={saveSettings}
-              disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? (
-                <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              ) : (
+            {!isEditMode ? (
+              <button
+                onClick={() => setIsEditMode(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
-              )}
-              {saving ? 'Saving...' : 'Save Settings'}
-            </button>
+                Edit
+              </button>
+            ) : (
+              <button
+                onClick={saveSettings}
+                disabled={saving}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            )}
             <button
               onClick={handleResetPassword}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover"
@@ -339,7 +358,8 @@ export default function Settings() {
               type="text"
               value={formData.accountName}
               onChange={(e) => setFormData(prev => ({ ...prev, accountName: e.target.value }))}
-              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+              disabled={!isEditMode}
+              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -351,7 +371,21 @@ export default function Settings() {
               type="email"
               value={formData.email}
               onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+              disabled={!isEditMode}
+              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Client Name
+            </label>
+            <input
+              type="text"
+              value={formData.clientName}
+              onChange={(e) => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
+              disabled={!isEditMode}
+              className="w-full max-w-md px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -361,10 +395,11 @@ export default function Settings() {
         <div className="flex items-center justify-between py-4">
           <h2 className="text-lg font-medium text-gray-900">AI Bot</h2>
           <button
-            onClick={() => setAiBotEnabled(!aiBotEnabled)}
+            onClick={() => isEditMode && setAiBotEnabled(!aiBotEnabled)}
+            disabled={!isEditMode}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
               aiBotEnabled ? 'bg-green-500' : 'bg-gray-300'
-            }`}
+            } ${!isEditMode ? 'cursor-not-allowed opacity-60' : ''}`}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${

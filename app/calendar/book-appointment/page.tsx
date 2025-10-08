@@ -98,10 +98,12 @@ export default function BookAppointment() {
 
   // Load available slots when practitioner or date changes
   useEffect(() => {
-    if (bookingData.practitionerId && bookingData.selectedDate) {
+    if (bookingData.practitionerId && bookingData.selectedDate && bookingData.appointmentTypeId) {
       loadAvailableSlots();
+    } else {
+      setAvailableSlots([]);
     }
-  }, [bookingData.practitionerId, bookingData.selectedDate]);
+  }, [bookingData.practitionerId, bookingData.selectedDate, bookingData.appointmentTypeId]);
 
   // Load available time slots for selected practitioner and date
   const loadAvailableSlots = async () => {
@@ -110,35 +112,14 @@ export default function BookAppointment() {
     try {
       setError(null);
 
-      // Get practitioner's working hours for the selected day
-      const workingHours = await workingHoursApi.getByPractitioner(bookingData.practitionerId);
-      const dayOfWeek = bookingData.selectedDate.getDay().toString(); // 0 = Sunday, 1 = Monday, etc.
-
-      const daySchedule = workingHours.find(wh => wh.day_of_week === dayOfWeek && wh.is_active);
-
-      if (!daySchedule) {
-        setAvailableSlots([]);
-        return;
-      }
-
-      // Generate time slots based on working hours and appointment duration
+      // Generate time slots based on appointment duration
+      // Default working hours: 9:00 AM to 5:00 PM
       const selectedAppointmentType = appointmentTypes.find(at => at.id === bookingData.appointmentTypeId);
       const durationMinutes = selectedAppointmentType?.duration_minutes || 30;
 
-      const slots = generateTimeSlots(daySchedule.start_time, daySchedule.end_time, durationMinutes);
+      const slots = generateTimeSlots('09:00:00', '17:00:00', durationMinutes);
 
-      // Filter out slots that are already booked
-      const existingAppointments = await appointmentsApi.getByPractitioner(
-        bookingData.practitionerId,
-        { date: bookingData.selectedDate.toISOString().split('T')[0] }
-      );
-
-      const availableSlotsFiltered = slots.filter(slot => {
-        const slotTime = convertTo24Hour(slot);
-        return !existingAppointments.some(appointment => appointment.start_time === slotTime);
-      });
-
-      setAvailableSlots(availableSlotsFiltered);
+      setAvailableSlots(slots);
     } catch (err) {
       console.error('Error loading available slots:', err);
       setError('Failed to load available time slots.');
@@ -167,6 +148,9 @@ export default function BookAppointment() {
 
   // Convert 12-hour format to 24-hour format for API
   const convertTo24Hour = (time12h: string): string => {
+    if (!time12h || !time12h.match(/(am|pm)/i)) {
+      throw new Error('Invalid time format. Expected format: HH:MMam/pm');
+    }
     const [time, period] = time12h.split(/(am|pm)/i);
     let [hours, minutes] = time.split(':').map(Number);
     if (period.toLowerCase() === 'pm' && hours !== 12) {
@@ -204,9 +188,31 @@ export default function BookAppointment() {
 
   // Handle appointment creation
   const handleSaveAppointment = async () => {
-    if (!bookingData.patientId || !bookingData.selectedDate || !bookingData.selectedTime ||
-        !bookingData.practitionerId || !bookingData.appointmentTypeId) {
-      setError('Please fill in all required fields.');
+    console.log(bookingData);
+
+    // Validate required fields
+    if (!bookingData.selectedDate) {
+      alert('Please select a date for the appointment.');
+      return;
+    }
+
+    if (!bookingData.selectedTime) {
+      alert('Please select a time slot for the appointment.');
+      return;
+    }
+
+    if (!bookingData.patientId) {
+      alert('Please select a patient.');
+      return;
+    }
+
+    if (!bookingData.appointmentTypeId) {
+      alert('Please select an appointment type.');
+      return;
+    }
+
+    if (!bookingData.practitionerId) {
+      setError('Please select a practitioner.');
       return;
     }
 
@@ -232,7 +238,7 @@ export default function BookAppointment() {
         end_time: endTime24h,
         status: 'scheduled',
         notes: '',
-        created_by: 'user-123' // This should come from auth context
+        created_by: 'user-123'
       };
 
       await appointmentsApi.create(appointmentData);
@@ -421,7 +427,7 @@ export default function BookAppointment() {
               </label>
               <select
                 value={bookingData.practitionerId}
-                onChange={(e) => setBookingData(prev => ({ ...prev, practitionerId: e.target.value }))}
+                onChange={(e) => setBookingData(prev => ({ ...prev, practitionerId: e.target.value, selectedTime: '' }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 disabled={loading}
               >
@@ -441,7 +447,7 @@ export default function BookAppointment() {
               </label>
               <select
                 value={bookingData.appointmentTypeId}
-                onChange={(e) => setBookingData(prev => ({ ...prev, appointmentTypeId: e.target.value }))}
+                onChange={(e) => setBookingData(prev => ({ ...prev, appointmentTypeId: e.target.value, selectedTime: '' }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 disabled={loading}
               >
@@ -505,7 +511,7 @@ export default function BookAppointment() {
                       key={index}
                     onClick={() => {
                         const newDate = new Date(date);
-                        setBookingData(prev => ({ ...prev, selectedDate: newDate }));
+                        setBookingData(prev => ({ ...prev, selectedDate: newDate, selectedTime: '' }));
                     }}
                       disabled={!isCurrentMonth}
                     className={`w-8 h-8 text-sm rounded ${
@@ -527,16 +533,30 @@ export default function BookAppointment() {
 
             {/* Available Slots */}
             <div>
-              <h4 className="font-medium text-gray-900 mb-2">Available Slots</h4>
+              <h4 className="font-medium text-gray-900 mb-2">
+                Select Time Slot <span className="text-red-500">*</span>
+              </h4>
               {bookingData.selectedDate ? (
-                <p className="text-sm text-gray-600 mb-4">
-                  {bookingData.selectedDate.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600">
+                    {bookingData.selectedDate.toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                  {availableSlots.length > 0 && !bookingData.selectedTime && (
+                    <p className="text-sm text-primary font-medium mt-1">
+                      ⓘ Please select a time slot below
+                    </p>
+                  )}
+                  {bookingData.selectedTime && (
+                    <p className="text-sm text-green-600 font-medium mt-1">
+                      ✓ Selected: {bookingData.selectedTime}
+                    </p>
+                  )}
+                </div>
               ) : (
                 <p className="text-sm text-gray-600 mb-4">Please select a date</p>
               )}
@@ -547,10 +567,10 @@ export default function BookAppointment() {
                   <button
                     key={slot}
                     onClick={() => setBookingData(prev => ({ ...prev, selectedTime: slot }))}
-                    className={`px-3 py-2 text-sm border rounded-md ${
+                    className={`px-3 py-2 text-sm border rounded-md transition-all ${
                       bookingData.selectedTime === slot
-                        ? 'border-primary bg-primary text-white'
-                        : 'border-gray-300 text-gray-700 hover:border-primary'
+                        ? 'border-primary bg-primary text-white shadow-md'
+                        : 'border-gray-300 text-gray-700 hover:border-primary hover:bg-primary hover:bg-opacity-10'
                     }`}
                   >
                     {slot}
@@ -558,9 +578,9 @@ export default function BookAppointment() {
                   ))
                 ) : (
                   <p className="col-span-3 text-sm text-gray-500 text-center py-4">
-                    {bookingData.practitionerId && bookingData.selectedDate
+                    {bookingData.practitionerId && bookingData.selectedDate && bookingData.appointmentTypeId
                       ? 'No available slots for this date'
-                      : 'Select a practitioner and date to see available slots'
+                      : 'Select a practitioner, appointment type, and date to see available slots'
                     }
                   </p>
                 )}

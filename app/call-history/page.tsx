@@ -44,9 +44,9 @@ export default function CallHistory() {
         // Add status filter based on active tab
         if (activeTab !== 'All') {
           if (activeTab === 'Chat') {
-            params.status = 'Chat'; // Assuming Chat is a status
+            params.status = 'chat'; // Assuming Chat is a status
           } else {
-            params.status = activeTab;
+            params.status = activeTab.toLowerCase();
           }
         }
 

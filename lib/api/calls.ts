@@ -73,8 +73,7 @@ export const callsApi = {
     search?: string;
     start_date?: string;
   }): Promise<Call[]> => {
-    const response = await callsApi.getAll(params);
-    return response.results;
+    return await callsApi.getAll(params);
   },
 
   // Get single call
