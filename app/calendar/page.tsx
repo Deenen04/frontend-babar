@@ -35,8 +35,8 @@ const timeSlots = [
 export default function Calendar() {
   const [activeStaff, setActiveStaff] = useState<StaffType>('Doctor 1');
   const [currentView, setCurrentView] = useState<ViewType>('Day');
-  const [currentDate, setCurrentDate] = useState<Date>(new Date(2025, 9, 3)); // October 3, 2025
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date(2025, 9, 3)); // October 3, 2025
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [appointmentTypes, setAppointmentTypes] = useState<AppointmentType[]>([]);
   const [uiAppointments, setUiAppointments] = useState<UIAppointment[]>([]);
@@ -47,6 +47,10 @@ export default function Calendar() {
   const [showWorkingHoursModal, setShowWorkingHoursModal] = useState(false);
   const [workingHours, setWorkingHours] = useState<WorkingHour[]>([]);
   const [workingHoursLoading, setWorkingHoursLoading] = useState(false);
+
+  // Appointment details modal state
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   // Working hours form state
   const [selectedStaff, setSelectedStaff] = useState<string>('');
@@ -61,6 +65,15 @@ export default function Calendar() {
   });
   const [saving, setSaving] = useState(false);
   const staffTabs: StaffType[] = ['Doctor 1', 'Doctor 2', 'Nurse', 'Pragmafare'];
+
+  // Appointment details modal functions
+  const handleAppointmentClick = (appointmentId: string) => {
+    const appointment = appointments.find(apt => apt.id === appointmentId);
+    if (appointment) {
+      setSelectedAppointment(appointment);
+      setShowAppointmentModal(true);
+    }
+  };
 
   // Working hours management functions
   const loadWorkingHours = async () => {
@@ -193,10 +206,12 @@ export default function Calendar() {
           endDate = sunday.toISOString().split('T')[0];
         }
 
-        // Fetch all appointments directly from API
-        // Note: API returns direct array, not paginated response
-        const directResponse = await axiosInstance.get('/appointments');
-        
+        // Fetch appointments with date parameter based on filter date
+        // For day view: /appointments?date=2025-10-06
+        // For week view: /appointments?date=2025-10-06 (API should handle week range internally)
+        const dateParam = selectedDate.toISOString().split('T')[0];
+        const directResponse = await axiosInstance.get(`/appointments?date=${dateParam}`);
+
         // Handle both array and paginated responses
         let apiAppointments: Appointment[] = [];
         if (Array.isArray(directResponse.data)) {
@@ -204,27 +219,28 @@ export default function Calendar() {
         } else if (directResponse.data && typeof directResponse.data === 'object' && 'results' in directResponse.data) {
           apiAppointments = (directResponse.data as any).results as Appointment[];
         }
-        
+
         console.log('📅 Raw API Response:', directResponse.data);
         console.log('📅 Parsed Appointments:', apiAppointments);
+        console.log('📅 Date Parameter:', dateParam);
         console.log('📅 Date Range:', { startDate, endDate, currentView });
 
-        // Filter appointments client-side based on view and date
+        // For week view, we still need to filter client-side since API returns data for the week
         let filteredAppointments = apiAppointments || [];
-        
+
         if (currentView === 'Day') {
-          // For day view, filter by exact date
+          // For day view, filter by exact date (though API should already filter this)
           filteredAppointments = filteredAppointments.filter(appointment => {
             return appointment.appointment_date === startDate;
           });
         } else {
-          // For week view, filter by date range
+          // For week view, filter by date range (API should return week data, but double-check)
           filteredAppointments = filteredAppointments.filter(appointment => {
             const appointmentDate = appointment.appointment_date;
             return appointmentDate >= startDate && appointmentDate <= endDate;
           });
         }
-        
+
         console.log('📅 Filtered Appointments:', filteredAppointments);
 
         setAppointments(filteredAppointments);
@@ -319,11 +335,11 @@ export default function Calendar() {
     loadData();
   }, [selectedDate, currentView]);
 
-  // Calculate week days based on current date
+  // Calculate week days based on selected date
   const getWeekDays = () => {
-    const currentDay = currentDate.getDay();
-    const monday = new Date(currentDate);
-    monday.setDate(currentDate.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    const selectedDay = selectedDate.getDay();
+    const monday = new Date(selectedDate);
+    monday.setDate(selectedDate.getDate() - (selectedDay === 0 ? 6 : selectedDay - 1));
 
     const days = [];
     const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -402,12 +418,13 @@ export default function Calendar() {
             const isAvailable = appointment.status === 'available';
             const isConfirmed = appointment.status === 'confirmed';
             const style = getAppointmentStyle(appointment);
-            
+
             return (
-              <div 
-                key={appointment.id} 
-                className="absolute left-2 right-2 overflow-hidden"
+              <div
+                key={appointment.id}
+                className="absolute left-2 right-2 overflow-hidden cursor-pointer"
                 style={style}
+                onClick={() => handleAppointmentClick(appointment.id)}
               >
                 <div className={`h-full border-l-4 p-2 rounded shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
                   isAvailable 
@@ -484,7 +501,7 @@ export default function Calendar() {
           {weekDays.map(day => (
             <div key={day.fullDate.toISOString()} className="text-center p-2">
               <div className="text-sm text-gray-500">{day.short}</div>
-              <div className={`text-lg font-medium ${day.fullDate.toDateString() === currentDate.toDateString() ? 'bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center mx-auto' : 'text-gray-900'}`}>
+              <div className={`text-lg font-medium ${day.fullDate.toDateString() === selectedDate.toDateString() ? 'bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center mx-auto' : 'text-gray-900'}`}>
                 {day.date}
               </div>
             </div>
@@ -525,12 +542,13 @@ export default function Calendar() {
                   const isAvailable = appointment.status === 'available';
                   const isConfirmed = appointment.status === 'confirmed';
                   const style = getAppointmentStyle(appointment);
-                  
+
                   return (
-                    <div 
-                      key={appointment.id} 
-                      className="absolute left-0.5 right-0.5 overflow-hidden"
+                    <div
+                      key={appointment.id}
+                      className="absolute left-0.5 right-0.5 overflow-hidden cursor-pointer"
                       style={style}
+                      onClick={() => handleAppointmentClick(appointment.id)}
                     >
                       <div className={`h-full border-l-2 px-1 py-0.5 rounded text-[10px] shadow-sm hover:shadow-md transition-all cursor-pointer ${
                         isAvailable 
@@ -715,6 +733,7 @@ export default function Calendar() {
                 <div className="mt-4 p-3 bg-gray-50 rounded text-xs text-left inline-block">
                   <p className="font-semibold mb-1">Debug Info:</p>
                   <p>Selected Date: {selectedDate.toISOString().split('T')[0]}</p>
+                  <p>API Date Parameter: {selectedDate.toISOString().split('T')[0]}</p>
                   <p>Active Staff: {activeStaff}</p>
                   <p>Total Raw Appointments: {appointments.length}</p>
                   <p className="text-gray-400 mt-1">Check browser console for details</p>
@@ -859,6 +878,155 @@ export default function Calendar() {
               {saving ? 'Saving...' : 'Save'}
             </button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Appointment Details Modal */}
+      <Dialog open={showAppointmentModal} onOpenChange={setShowAppointmentModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Appointment Details</DialogTitle>
+          </DialogHeader>
+
+          {selectedAppointment && (
+            <div className="space-y-6">
+              {/* Status Badge */}
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">Status:</span>
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    selectedAppointment.status === 'confirmed'
+                      ? 'bg-blue-100 text-blue-800'
+                      : selectedAppointment.status === 'available'
+                      ? 'bg-green-100 text-green-800'
+                      : selectedAppointment.status === 'cancelled'
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {selectedAppointment.status.charAt(0).toUpperCase() + selectedAppointment.status.slice(1)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Basic Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Appointment ID</h3>
+                  <p className="text-sm font-mono text-gray-900">{selectedAppointment.id}</p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Patient Phone</h3>
+                  <p className="text-sm text-gray-900">
+                    {selectedAppointment.patient_phone || 'Not provided'}
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Practitioner ID</h3>
+                  <p className="text-sm text-gray-900">{selectedAppointment.practitioner_id}</p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Appointment Type ID</h3>
+                  <p className="text-sm text-gray-900">{selectedAppointment.appointment_type_id}</p>
+                </div>
+              </div>
+
+              {/* Date and Time */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Schedule</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-1">Date</h4>
+                    <p className="text-sm text-gray-900">
+                      {new Date(selectedAppointment.appointment_date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-1">Start Time</h4>
+                    <p className="text-sm text-gray-900">
+                      {new Date(`2000-01-01T${selectedAppointment.start_time}`).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-1">End Time</h4>
+                    <p className="text-sm text-gray-900">
+                      {new Date(`2000-01-01T${selectedAppointment.end_time}`).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Information */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h3>
+                <div className="space-y-4">
+                  {selectedAppointment.notes && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500 mb-1">Notes</h4>
+                      <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded">
+                        {selectedAppointment.notes}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedAppointment.call_id && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500 mb-1">Call ID</h4>
+                      <p className="text-sm font-mono text-gray-900">{selectedAppointment.call_id}</p>
+                    </div>
+                  )}
+
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-1">Created By</h4>
+                    <p className="text-sm text-gray-900">{selectedAppointment.created_by}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500 mb-1">Created At</h4>
+                      <p className="text-xs text-gray-900">
+                        {new Date(selectedAppointment.created_at).toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500 mb-1">Updated At</h4>
+                      <p className="text-xs text-gray-900">
+                        {new Date(selectedAppointment.updated_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button
+                  onClick={() => setShowAppointmentModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
