@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { dashboardApi, type DashboardResponse, type TodayAppointment, type DashboardReminder, type LiveCall } from '@/lib/api/dashboard';
 
@@ -101,9 +102,11 @@ export default function Dashboard() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Reminders</h2>
-            <button className="text-primary text-sm font-medium hover:text-primary-hover">
-              See all
-            </button>
+            <Link href="/reminders">
+              <button className="text-primary text-sm font-medium hover:text-primary-hover cursor-pointer">
+                See all
+              </button>
+            </Link>
           </div>
           
           <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
@@ -150,9 +153,11 @@ export default function Dashboard() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Live calls</h2>
-            <button className="text-primary text-sm font-medium hover:text-primary-hover">
-              See all
-            </button>
+            <Link href="/call-history">
+              <button className="text-primary text-sm font-medium hover:text-primary-hover cursor-pointer">
+                See all
+              </button>
+            </Link>
           </div>
           
           <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">

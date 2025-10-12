@@ -209,6 +209,7 @@ export const callsUtils = {
         minute: '2-digit',
         hour12: true
       }) : undefined,
+      recording_url: call.recording_url,
     };
   },
 

@@ -24,6 +24,7 @@ interface CallRecord {
   notes?: string;
   startTime?: string;
   endTime?: string;
+  recording_url?: string;
 }
 
 export default function CallHistory() {

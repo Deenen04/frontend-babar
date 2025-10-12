@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import { appointmentsApi, Appointment } from '../lib/api/appointments';
@@ -39,13 +40,25 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
         const today = new Date().toISOString().split('T')[0];
 
         // Fetch appointments for today, practitioners, and clinic name in parallel
-        const [todayAppointments, allPractitioners, systemSettings] = await Promise.all([
+        const [allTodayAppointments, allPractitioners, systemSettings] = await Promise.all([
           appointmentsApi.getByDate(today),
           practitionersApi.getPractitioners(),
           settingsApi.getSystemConfig().catch(() => []) // Fallback to empty array if settings fail
         ]);
 
-        setAppointments(todayAppointments);
+        console.log('Raw API data:', allTodayAppointments);
+        console.log('Today date:', today);
+        console.log('Is dashboard page:', isDashboard);
+
+        // For dashboard, show all appointments (available slots and booked ones) except cancelled
+        const bookedAppointments = (allTodayAppointments || []).filter(appointment =>
+          appointment.status !== 'cancelled'
+        );
+
+        console.log('Filtered appointments:', bookedAppointments);
+        console.log('Appointments length:', bookedAppointments.length);
+
+        setAppointments(bookedAppointments);
         setPractitioners(allPractitioners);
 
         // Set clinic name from system settings or use default
@@ -98,10 +111,12 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
         <div className="fixed top-16 right-0 w-80 h-screen bg-white border-l border-gray-200 overflow-y-auto">
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Today's Appointments</h3>
-              <button className="text-primary text-sm font-medium hover:text-primary-hover">
-                View All
-              </button>
+              <h3 className="text-lg font-semibold text-gray-900">Today's Schedule</h3>
+              <Link href="/calendar">
+                <button className="text-primary text-sm font-medium hover:text-primary-hover cursor-pointer">
+                  View All
+                </button>
+              </Link>
             </div>
 
             <div className="space-y-3">
@@ -116,7 +131,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 </div>
               ) : !appointments || appointments.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-sm text-gray-500">No appointments scheduled for today</p>
+                  <p className="text-sm text-gray-500">No schedule available for today</p>
                 </div>
               ) : (
                 appointments.map((appointment) => {
@@ -124,8 +139,14 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                   const dayOfWeek = appointmentDate.toLocaleDateString('en-US', { weekday: 'short' });
                   const dayOfMonth = appointmentDate.getDate();
 
+                  const isBooked = appointment.patient_phone !== null || appointment.status !== 'available';
+
                   return (
-                    <div key={appointment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div key={appointment.id} className={`flex items-center justify-between p-3 rounded-lg border ${
+                      isBooked
+                        ? 'bg-blue-50 border-blue-200'
+                        : 'bg-gray-50 border-gray-200'
+                    }`}>
                       <div className="flex items-center gap-3">
                         <div className="text-center">
                           <p className="text-xs font-medium text-gray-500">
@@ -135,10 +156,19 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                             {dayOfMonth}
                           </p>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {getPractitionerName(appointment.practitioner_id)}
-                          </p>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-gray-900">
+                              {getPractitionerName(appointment.practitioner_id)}
+                            </p>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              isBooked
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {isBooked ? 'Booked' : 'Available'}
+                            </span>
+                          </div>
                           <p className="text-sm text-gray-500">
                             {formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}
                           </p>
@@ -146,7 +176,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                             {clinicName}
                           </p>
                           {appointment.patient_phone && (
-                            <p className="text-xs text-gray-400">
+                            <p className="text-xs text-gray-600 font-medium">
                               Patient: {appointment.patient_phone}
                             </p>
                           )}

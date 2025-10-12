@@ -17,6 +17,7 @@ interface CallRecord {
   notes?: string;
   startTime?: string;
   endTime?: string;
+  recording_url?: string;
 }
 
 interface CallDetailsModalProps {
@@ -68,10 +69,6 @@ const sampleTranscript: ChatMessage[] = [
 
 export default function CallDetailsModal({ call, onClose }: CallDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<'transcript' | 'summary'>('transcript');
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState('02:45');
-  const [totalTime] = useState('05:00');
-  const [playbackSpeed, setPlaybackSpeed] = useState('1.5x');
 
   // Parse transcript JSON and convert to ChatMessage format
   const parseTranscript = (transcriptJson: string | undefined): ChatMessage[] => {
@@ -177,54 +174,31 @@ export default function CallDetailsModal({ call, onClose }: CallDetailsModalProp
             </div>
 
             {/* Audio Player */}
-            <div className="mb-6">
-              <p className="text-sm font-medium text-gray-900 mb-3">Call Recording</p>
-              
-              <div className="bg-gray-50 rounded-lg p-4">
-                {/* Waveform */}
-                <div className="flex items-center gap-3 mb-4">
-                  <button
-                    onClick={() => setIsPlaying(!isPlaying)}
-                    className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center hover:bg-primary-hover"
+            {call.recording_url ? (
+              <div className="mb-6">
+                <p className="text-sm font-medium text-gray-900 mb-3">Call Recording</p>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <audio
+                    controls
+                    className="w-full"
+                    preload="metadata"
                   >
-                    {isPlaying ? (
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                      </svg>
-                    )}
-                  </button>
-                  
-                  {/* Waveform bars */}
-                  <div className="flex-1 flex items-center gap-0.5 h-8">
-                    {Array.from({ length: 80 }, (_, i) => (
-                      <div
-                        key={i}
-                        className={`w-1 rounded-full ${
-                          i < 30 ? 'bg-primary' : 'bg-gray-300'
-                        }`}
-                        style={{
-                          height: `${Math.random() * 100 + 20}%`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                  
-                  <button className="px-3 py-1 bg-primary text-white text-xs rounded-md hover:bg-primary-hover">
-                    {playbackSpeed}
-                  </button>
-                </div>
-                
-                {/* Time display */}
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>{currentTime}</span>
-                  <span>{totalTime}</span>
+                    <source src={call.recording_url} type="audio/mpeg" />
+                    <source src={call.recording_url} type="audio/wav" />
+                    Your browser does not support the audio element.
+                  </audio>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="mb-6">
+                <p className="text-sm font-medium text-gray-900 mb-3">Call Recording</p>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-gray-500 text-sm">No recording available</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Tabs */}

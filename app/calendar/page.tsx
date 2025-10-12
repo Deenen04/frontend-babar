@@ -188,28 +188,33 @@ export default function Calendar() {
         setAppointmentTypes(types);
 
         // Calculate date range based on current view and selected date
+        // Create date strings in local timezone to avoid UTC conversion issues
+        const selectedYear = selectedDate.getFullYear();
+        const selectedMonth = selectedDate.getMonth();
+        const selectedDayOfMonth = selectedDate.getDate();
+
         let startDate: string;
         let endDate: string;
 
         if (currentView === 'Day') {
-          startDate = selectedDate.toISOString().split('T')[0];
+          // Format as YYYY-MM-DD in local timezone
+          startDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(selectedDayOfMonth).padStart(2, '0')}`;
           endDate = startDate;
         } else {
           // For week view, get the week containing the selected date
           const selectedDay = selectedDate.getDay();
-          const monday = new Date(selectedDate);
-          monday.setDate(selectedDate.getDate() - (selectedDay === 0 ? 6 : selectedDay - 1));
+          const monday = new Date(selectedYear, selectedMonth, selectedDayOfMonth - (selectedDay === 0 ? 6 : selectedDay - 1));
           const sunday = new Date(monday);
           sunday.setDate(monday.getDate() + 6);
 
-          startDate = monday.toISOString().split('T')[0];
-          endDate = sunday.toISOString().split('T')[0];
+          startDate = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+          endDate = `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, '0')}-${String(sunday.getDate()).padStart(2, '0')}`;
         }
 
         // Fetch appointments with date parameter based on filter date
         // For day view: /appointments?date=2025-10-06
         // For week view: /appointments?date=2025-10-06 (API should handle week range internally)
-        const dateParam = selectedDate.toISOString().split('T')[0];
+        const dateParam = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(selectedDayOfMonth).padStart(2, '0')}`;
         const directResponse = await axiosInstance.get(`/appointments?date=${dateParam}`);
 
         // Handle both array and paginated responses
@@ -296,7 +301,9 @@ export default function Calendar() {
           };
 
           // Extract day from date for week view
-          const appointmentDate = new Date(appointment.appointment_date + 'T00:00:00');
+          // Parse the date string in local timezone to avoid timezone conversion issues
+          const [year, month, day] = appointment.appointment_date.split('-').map(Number);
+          const appointmentDate = new Date(year, month - 1, day);
           const dayOfMonth = appointmentDate.getDate();
 
           // Format patient display
@@ -337,9 +344,12 @@ export default function Calendar() {
 
   // Calculate week days based on selected date
   const getWeekDays = () => {
+    const selectedYear = selectedDate.getFullYear();
+    const selectedMonth = selectedDate.getMonth();
+    const selectedDayOfMonth = selectedDate.getDate();
     const selectedDay = selectedDate.getDay();
-    const monday = new Date(selectedDate);
-    monday.setDate(selectedDate.getDate() - (selectedDay === 0 ? 6 : selectedDay - 1));
+
+    const monday = new Date(selectedYear, selectedMonth, selectedDayOfMonth - (selectedDay === 0 ? 6 : selectedDay - 1));
 
     const days = [];
     const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -732,8 +742,8 @@ export default function Calendar() {
                 </p>
                 <div className="mt-4 p-3 bg-gray-50 rounded text-xs text-left inline-block">
                   <p className="font-semibold mb-1">Debug Info:</p>
-                  <p>Selected Date: {selectedDate.toISOString().split('T')[0]}</p>
-                  <p>API Date Parameter: {selectedDate.toISOString().split('T')[0]}</p>
+                  <p>Selected Date: {selectedDate.toLocaleDateString()}</p>
+                  <p>API Date Parameter: {`${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`}</p>
                   <p>Active Staff: {activeStaff}</p>
                   <p>Total Raw Appointments: {appointments.length}</p>
                   <p className="text-gray-400 mt-1">Check browser console for details</p>

@@ -107,17 +107,27 @@ export default function BookAppointment() {
 
   // Load available time slots for selected practitioner and date
   const loadAvailableSlots = async () => {
-    if (!bookingData.practitionerId || !bookingData.selectedDate) return;
+    if (!bookingData.practitionerId || !bookingData.selectedDate || !bookingData.appointmentTypeId) {
+      setAvailableSlots([]);
+      return;
+    }
 
     try {
       setError(null);
 
-      // Generate time slots based on appointment duration
-      // Default working hours: 9:00 AM to 5:00 PM
-      const selectedAppointmentType = appointmentTypes.find(at => at.id === bookingData.appointmentTypeId);
-      const durationMinutes = selectedAppointmentType?.duration_minutes || 30;
+      // Get appointments for the selected date
+      const dateString = bookingData.selectedDate.toISOString().split('T')[0];
+      const appointmentsForDate = await appointmentsApi.getByDate(dateString);
 
-      const slots = generateTimeSlots('09:00:00', '17:00:00', durationMinutes);
+      // Filter for available slots for the selected practitioner and appointment type
+      const availableAppointments = appointmentsForDate.filter(appointment =>
+        appointment.practitioner_id === bookingData.practitionerId &&
+        appointment.appointment_type_id === bookingData.appointmentTypeId &&
+        appointment.status === 'available'
+      );
+
+      // Extract and format the start times
+      const slots = availableAppointments.map(appointment => formatTimeTo12Hour(appointment.start_time));
 
       setAvailableSlots(slots);
     } catch (err) {
@@ -579,7 +589,7 @@ export default function BookAppointment() {
                 ) : (
                   <p className="col-span-3 text-sm text-gray-500 text-center py-4">
                     {bookingData.practitionerId && bookingData.selectedDate && bookingData.appointmentTypeId
-                      ? 'No available slots for this date'
+                      ? 'No schedule available for this date'
                       : 'Select a practitioner, appointment type, and date to see available slots'
                     }
                   </p>
