@@ -66,6 +66,14 @@ export default function Calendar() {
   const [saving, setSaving] = useState(false);
   const staffTabs: StaffType[] = ['Doctor 1', 'Doctor 2', 'Nurse', 'Pragmafare'];
 
+  // Map staff types to practitioner IDs
+  const staffToPractitionerId: Record<StaffType, string> = {
+    'Doctor 1': 'user_august',
+    'Doctor 2': 'user_terrani',
+    'Nurse': 'nurse',
+    'Pragmafare': 'pragmafare'
+  };
+
   // Appointment details modal functions
   const handleAppointmentClick = (appointmentId: string) => {
     const appointment = appointments.find(apt => apt.id === appointmentId);
@@ -112,15 +120,15 @@ export default function Calendar() {
 
     setSaving(true);
     try {
-      // Map staff names to practitioner IDs (this would typically come from your backend)
-      const staffToPractitionerId: Record<string, string> = {
+      // Map staff names to practitioner IDs
+      const practitionerIdMap: Record<string, string> = {
         'Doctor 1': 'user_august',
         'Doctor 2': 'user_terrani',
-        'Nurse': 'nurse_001',
-        'Pragmafare': 'pragmafare_001'
+        'Nurse': 'nurse',
+        'Pragmafare': 'pragmafare'
       };
 
-      const practitionerId = staffToPractitionerId[selectedStaff];
+      const practitionerId = practitionerIdMap[selectedStaff];
       if (!practitionerId) {
         throw new Error('Invalid staff member selected');
       }
@@ -211,11 +219,12 @@ export default function Calendar() {
           endDate = `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, '0')}-${String(sunday.getDate()).padStart(2, '0')}`;
         }
 
-        // Fetch appointments with date parameter based on filter date
-        // For day view: /appointments?date=2025-10-06
-        // For week view: /appointments?date=2025-10-06 (API should handle week range internally)
+        // Fetch appointments with date parameter and practitioner_id based on filter date and active staff
+        // For day view: /appointments?date=2025-10-06&practitioner_id=nurse
+        // For week view: /appointments?date=2025-10-06&practitioner_id=nurse (API should handle week range internally)
         const dateParam = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(selectedDayOfMonth).padStart(2, '0')}`;
-        const directResponse = await axiosInstance.get(`/appointments?date=${dateParam}`);
+        const practitionerId = staffToPractitionerId[activeStaff];
+        const directResponse = await axiosInstance.get(`/appointments?date=${dateParam}&practitioner_id=${practitionerId}`);
 
         // Handle both array and paginated responses
         let apiAppointments: Appointment[] = [];
@@ -228,6 +237,7 @@ export default function Calendar() {
         console.log('📅 Raw API Response:', directResponse.data);
         console.log('📅 Parsed Appointments:', apiAppointments);
         console.log('📅 Date Parameter:', dateParam);
+        console.log('📅 Practitioner ID:', practitionerId);
         console.log('📅 Date Range:', { startDate, endDate, currentView });
 
         // For week view, we still need to filter client-side since API returns data for the week
@@ -340,7 +350,7 @@ export default function Calendar() {
     };
 
     loadData();
-  }, [selectedDate, currentView]);
+  }, [selectedDate, currentView, activeStaff]);
 
   // Calculate week days based on selected date
   const getWeekDays = () => {
