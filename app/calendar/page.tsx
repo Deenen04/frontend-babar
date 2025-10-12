@@ -221,10 +221,17 @@ export default function Calendar() {
 
         // Fetch appointments with date parameter and practitioner_id based on filter date and active staff
         // For day view: /appointments?date=2025-10-06&practitioner_id=nurse
-        // For week view: /appointments?date=2025-10-06&practitioner_id=nurse (API should handle week range internally)
-        const dateParam = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(selectedDayOfMonth).padStart(2, '0')}`;
+        // For week view: /appointments?practitioner_id=nurse (fetch all and filter client-side)
         const practitionerId = staffToPractitionerId[activeStaff];
-        const directResponse = await axiosInstance.get(`/appointments?date=${dateParam}&practitioner_id=${practitionerId}`);
+        let apiUrl = `/appointments?practitioner_id=${practitionerId}`;
+        
+        // Only add date parameter for Day view
+        if (currentView === 'Day') {
+          const dateParam = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(selectedDayOfMonth).padStart(2, '0')}`;
+          apiUrl += `&date=${dateParam}`;
+        }
+        
+        const directResponse = await axiosInstance.get(apiUrl);
 
         // Handle both array and paginated responses
         let apiAppointments: Appointment[] = [];
@@ -234,9 +241,9 @@ export default function Calendar() {
           apiAppointments = (directResponse.data as any).results as Appointment[];
         }
 
+        console.log('📅 API URL:', apiUrl);
         console.log('📅 Raw API Response:', directResponse.data);
         console.log('📅 Parsed Appointments:', apiAppointments);
-        console.log('📅 Date Parameter:', dateParam);
         console.log('📅 Practitioner ID:', practitionerId);
         console.log('📅 Date Range:', { startDate, endDate, currentView });
 
@@ -753,7 +760,7 @@ export default function Calendar() {
                 <div className="mt-4 p-3 bg-gray-50 rounded text-xs text-left inline-block">
                   <p className="font-semibold mb-1">Debug Info:</p>
                   <p>Selected Date: {selectedDate.toLocaleDateString()}</p>
-                  <p>API Date Parameter: {`${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`}</p>
+                  <p>Current View: {currentView}</p>
                   <p>Active Staff: {activeStaff}</p>
                   <p>Total Raw Appointments: {appointments.length}</p>
                   <p className="text-gray-400 mt-1">Check browser console for details</p>
