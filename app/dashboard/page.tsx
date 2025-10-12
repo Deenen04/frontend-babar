@@ -167,16 +167,39 @@ export default function Dashboard() {
               </div>
             ) : (
               dashboardData.live_calls.map((call, index) => {
-                let transcriptText = 'No transcription available';
-                try {
-                  const transcriptData = JSON.parse(call.transcript_snippet);
-                  if (Array.isArray(transcriptData) && transcriptData.length > 0) {
-                    const lastEntry = transcriptData[transcriptData.length - 1];
-                    transcriptText = lastEntry.bot || lastEntry.user || 'No transcription available';
+                const getChatPreview = (transcriptSnippet: string) => {
+                  try {
+                    const transcriptData = JSON.parse(transcriptSnippet);
+                    if (Array.isArray(transcriptData) && transcriptData.length > 0) {
+                      const messages = [];
+                      let messageCount = 0;
+                      const maxMessages = 4; // Show up to 4 messages in preview
+
+                      for (const entry of transcriptData) {
+                        if (messageCount >= maxMessages) break;
+
+                        if (entry.bot && entry.bot.trim()) {
+                          messages.push(`AI: ${entry.bot.trim().substring(0, 20)}${entry.bot.trim().length > 20 ? '...' : ''}`);
+                          messageCount++;
+                        }
+
+                        if (messageCount >= maxMessages) break;
+
+                        if (entry.user && entry.user.trim()) {
+                          messages.push(`Patient: ${entry.user.trim().substring(0, 20)}${entry.user.trim().length > 20 ? '...' : ''}`);
+                          messageCount++;
+                        }
+                      }
+
+                      return messages.join(' • ');
+                    }
+                  } catch (e) {
+                    return transcriptSnippet || 'No transcription available';
                   }
-                } catch (e) {
-                  transcriptText = call.transcript_snippet || 'No transcription available';
-                }
+                  return 'No transcription available';
+                };
+
+                const chatPreview = getChatPreview(call.transcript_snippet);
 
                 return (
                   <div key={`${call.phone_number}-${index}`} className="p-4">
@@ -193,11 +216,8 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 font-medium mb-1">Transcription</p>
-                      <p className="text-sm text-gray-500">
-                        {transcriptText.length > 100
-                          ? `${transcriptText.substring(0, 100)}...`
-                          : transcriptText
-                        }
+                      <p className="text-sm text-gray-500 truncate">
+                        {chatPreview}
                       </p>
                     </div>
                   </div>
