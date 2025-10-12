@@ -9,7 +9,7 @@ import { axiosInstance } from '@/lib/axios';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type ViewType = 'Day' | 'Week';
-type StaffType = 'Doctor 1' | 'Doctor 2' | 'Nurse' | 'Pragmafare';
+type StaffType = 'Doctor 1' | 'Doctor 2' | 'Nurse' | 'Pragmafer';
 
 // UI-friendly appointment interface
 interface UIAppointment {
@@ -64,14 +64,14 @@ export default function Calendar() {
     sunday: { active: false, startTime: '09:00', endTime: '17:00' },
   });
   const [saving, setSaving] = useState(false);
-  const staffTabs: StaffType[] = ['Doctor 1', 'Doctor 2', 'Nurse', 'Pragmafare'];
+  const staffTabs: StaffType[] = ['Doctor 1', 'Doctor 2', 'Nurse', 'Pragmafer'];
 
   // Map staff types to practitioner IDs
   const staffToPractitionerId: Record<StaffType, string> = {
     'Doctor 1': 'user_august',
     'Doctor 2': 'user_terrani',
     'Nurse': 'nurse',
-    'Pragmafare': 'pragmafare'
+    'Pragmafer': 'pragmafer'
   };
 
   // Appointment details modal functions
@@ -125,7 +125,7 @@ export default function Calendar() {
         'Doctor 1': 'user_august',
         'Doctor 2': 'user_terrani',
         'Nurse': 'nurse',
-        'Pragmafare': 'pragmafare'
+        'Pragmafer': 'pragmafer'
       };
 
       const practitionerId = practitionerIdMap[selectedStaff];
@@ -281,11 +281,11 @@ export default function Calendar() {
             staffType = 'Nurse';
             displayName = 'Nurse Appointment';
           }
-          // Check for pragmafare
+          // Check for pragmafer
           else if (practitionerId.includes('pragmafer') || appointmentTypeId.includes('pragmafer') ||
                    practitionerId.includes('infusion') || appointmentTypeId.includes('infusion')) {
-            staffType = 'Pragmafare';
-            displayName = 'Pragmafare';
+            staffType = 'Pragmafer';
+            displayName = 'Pragmafer';
           }
           // Default to Doctor - distinguish between Doctor 1 and Doctor 2
           else {
