@@ -4,10 +4,19 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { dashboardApi, type DashboardResponse, type TodayAppointment, type DashboardReminder, type LiveCall } from '@/lib/api/dashboard';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [selectedReminder, setSelectedReminder] = useState<DashboardReminder | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -44,6 +53,16 @@ export default function Dashboard() {
       case 'followup': return 'text-orange-600';
       default: return 'text-gray-600';
     }
+  };
+
+  const handleViewReminder = (reminder: DashboardReminder) => {
+    setSelectedReminder(reminder);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedReminder(null);
   };
 
   if (loading) {
@@ -140,7 +159,10 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-                  <button className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary-hover">
+                  <button 
+                    onClick={() => handleViewReminder(reminder)}
+                    className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary-hover"
+                  >
                     View
                   </button>
                 </div>
@@ -227,6 +249,109 @@ export default function Dashboard() {
           </div>
         </section>
       </div>
+
+      {/* Reminder Details Modal */}
+      <Dialog open={isModalOpen} onOpenChange={handleCloseModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-semibold text-gray-900">
+              Reminder Details
+            </DialogTitle>
+            <DialogDescription className="text-gray-500">
+              Complete information about this reminder
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedReminder && (
+            <div className="space-y-6 mt-4">
+              {/* Patient Information */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Patient Information
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Phone Number:</span>
+                    <span className="text-sm font-medium text-gray-900">{selectedReminder.patient_phone}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reminder Details */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Reminder Details
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Type:</span>
+                    <span className={`text-sm font-medium ${getReminderTypeColor(selectedReminder.reminder_type)}`}>
+                      {selectedReminder.reminder_type}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Priority:</span>
+                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${getPriorityColor(selectedReminder.priority)}`}>
+                      {selectedReminder.priority}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Status:</span>
+                    <span className="text-sm font-medium text-gray-900">{selectedReminder.status}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Due Date & Time */}
+              {(selectedReminder.due_date !== 'None' || selectedReminder.due_time !== 'None') && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Schedule
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedReminder.due_date !== 'None' && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Due Date:</span>
+                        <span className="text-sm font-medium text-gray-900">{selectedReminder.due_date}</span>
+                      </div>
+                    )}
+                    {selectedReminder.due_time !== 'None' && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Due Time:</span>
+                        <span className="text-sm font-medium text-gray-900">{selectedReminder.due_time}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50"
+                >
+                  Close
+                </button>
+                <Link href="/reminders">
+                  <button className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary-hover">
+                    View All Reminders
+                  </button>
+                </Link>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </DashboardLayout>
   );
