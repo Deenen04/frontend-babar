@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import CallDetailsModal from '../../components/CallDetailsModal';
 import { DatePicker } from '@/components/ui/date-picker';
-import { callsApi, callsUtils, type Call } from '@/lib/api/calls';
+import { callsApi, callsUtils, type Call, type CallResponse } from '@/lib/api/calls';
 
 type CallStatus = 'Live' | 'Answered' | 'Missed';
 type TabType = 'All' | 'Live' | 'Answered' | 'Chat';
@@ -36,6 +36,10 @@ export default function CallHistory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalCalls, setTotalCalls] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageSize] = useState(10); // Fixed page size
 
   // Load calls from API with filters
   useEffect(() => {
@@ -45,7 +49,10 @@ export default function CallHistory() {
 
       try {
         // Prepare filter parameters
-        const params: any = {};
+        const params: any = {
+          page: currentPage,
+          limit: pageSize,
+        };
 
         // Add status filter based on active tab
         if (activeTab !== 'All') {
@@ -67,16 +74,15 @@ export default function CallHistory() {
         }
 
         // Fetch calls from API with filters (API handles search and date filtering)
-        const apiCalls = await callsApi.getCalls(params);
-
-        // Ensure apiCalls is an array (handle potential API response format issues)
-        const callsArray = Array.isArray(apiCalls) ? apiCalls : ((apiCalls as any)?.results || []);
+        const response: CallResponse = await callsApi.getCalls(params);
 
         // Convert API format to UI format using the utility function
-        const uiCalls = callsArray.map((call: Call) => callsUtils.formatForDisplay(call));
+        const uiCalls = response.results.map((call: Call) => callsUtils.formatForDisplay(call));
 
         setCalls(uiCalls);
-        setTotalCalls(uiCalls.length);
+        setTotalCalls(response.count);
+        setTotalCount(response.count);
+        setTotalPages(Math.ceil(response.count / pageSize));
       } catch (err) {
         console.error('Error loading calls:', err);
         setError('Failed to load calls. Please try again.');
@@ -86,9 +92,19 @@ export default function CallHistory() {
     };
 
     loadCalls();
-  }, [activeTab, searchTerm, selectedDate]);
+  }, [activeTab, searchTerm, selectedDate, currentPage, pageSize]);
 
   const tabs: TabType[] = ['All', 'Live', 'Answered', 'Chat'];
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchTerm, selectedDate]);
 
   // Calls are already filtered by the API, so just return them
   const filteredCalls = calls;
@@ -336,40 +352,100 @@ export default function CallHistory() {
         )}
 
         {/* Pagination */}
-        {!loading && filteredCalls.length > 0 && (
+        {!loading && totalCount > 0 && (
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-700">
-              Showing Calls <span className="font-medium">1</span> to <span className="font-medium">{Math.min(filteredCalls.length, 7)}</span> of{' '}
-              <span className="font-medium">{filteredCalls.length}</span> entries
+              Showing Calls <span className="font-medium">{((currentPage - 1) * pageSize) + 1}</span> to{' '}
+              <span className="font-medium">{Math.min(currentPage * pageSize, totalCount)}</span> of{' '}
+              <span className="font-medium">{totalCount}</span> entries
             </div>
 
             <nav className="flex items-center gap-2">
-              <button className="p-2 text-gray-400 hover:text-gray-600">
+              {/* Previous button */}
+              <button 
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={`p-2 ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-600'}`}
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
 
-              <button className="px-3 py-1 bg-primary text-white rounded text-sm font-medium">
-                1
-              </button>
+              {/* Page numbers */}
+              {(() => {
+                const pages = [];
+                const maxVisiblePages = 5;
+                let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
-              {[2, 3, 4].map((page) => (
-                <button
-                  key={page}
-                  className="px-3 py-1 text-gray-700 hover:bg-gray-100 rounded text-sm font-medium"
-                >
-                  {page}
-                </button>
-              ))}
+                // Adjust start page if we're near the end
+                if (endPage - startPage + 1 < maxVisiblePages) {
+                  startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                }
 
-              <span className="px-2 text-gray-500">...</span>
+                // Add first page and ellipsis if needed
+                if (startPage > 1) {
+                  pages.push(
+                    <button
+                      key={1}
+                      onClick={() => handlePageChange(1)}
+                      className="px-3 py-1 text-gray-700 hover:bg-gray-100 rounded text-sm font-medium"
+                    >
+                      1
+                    </button>
+                  );
+                  if (startPage > 2) {
+                    pages.push(
+                      <span key="ellipsis1" className="px-2 text-gray-500">...</span>
+                    );
+                  }
+                }
 
-              <button className="px-3 py-1 text-gray-700 hover:bg-gray-100 rounded text-sm font-medium">
-                40
-              </button>
+                // Add visible pages
+                for (let i = startPage; i <= endPage; i++) {
+                  pages.push(
+                    <button
+                      key={i}
+                      onClick={() => handlePageChange(i)}
+                      className={`px-3 py-1 rounded text-sm font-medium ${
+                        i === currentPage
+                          ? 'bg-primary text-white'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {i}
+                    </button>
+                  );
+                }
 
-              <button className="p-2 text-gray-400 hover:text-gray-600">
+                // Add last page and ellipsis if needed
+                if (endPage < totalPages) {
+                  if (endPage < totalPages - 1) {
+                    pages.push(
+                      <span key="ellipsis2" className="px-2 text-gray-500">...</span>
+                    );
+                  }
+                  pages.push(
+                    <button
+                      key={totalPages}
+                      onClick={() => handlePageChange(totalPages)}
+                      className="px-3 py-1 text-gray-700 hover:bg-gray-100 rounded text-sm font-medium"
+                    >
+                      {totalPages}
+                    </button>
+                  );
+                }
+
+                return pages;
+              })()}
+
+              {/* Next button */}
+              <button 
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={`p-2 ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-600'}`}
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>

@@ -54,16 +54,16 @@ export interface CallResponse {
 
 // Calls API functions
 export const callsApi = {
-  // Get all calls (API returns array directly)
+  // Get all calls (API returns paginated response)
   getAll: async (params?: {
     page?: number;
     limit?: number;
     status?: string;
     search?: string;
     start_date?: string;
-  }): Promise<Call[]> => {
+  }): Promise<CallResponse> => {
     const response = await axiosInstance.get('/calls', { params });
-    return response.data as Call[];
+    return response.data as CallResponse;
   },
 
   // Get calls data (alias for getAll)
@@ -73,7 +73,7 @@ export const callsApi = {
     status?: string;
     search?: string;
     start_date?: string;
-  }): Promise<Call[]> => {
+  }): Promise<CallResponse> => {
     return await callsApi.getAll(params);
   },
 
@@ -102,32 +102,56 @@ export const callsApi = {
   },
 
   // Get calls by status
-  getByStatus: async (status: string, params?: { page?: number; limit?: number; search?: string; start_date?: string }): Promise<Call[]> => {
-    const calls = await callsApi.getCalls({ ...params, status });
-    return calls.filter(call => call.call_status === status);
+  getByStatus: async (status: string, params?: { page?: number; limit?: number; search?: string; start_date?: string }): Promise<CallResponse> => {
+    const response = await callsApi.getCalls({ ...params, status });
+    // Filter results by status if needed (API should handle this, but keeping as backup)
+    const filteredResults = response.results.filter(call => call.call_status === status);
+    return {
+      ...response,
+      results: filteredResults,
+      count: filteredResults.length
+    };
   },
 
   // Get calls by type
-  getByType: async (type: string, params?: { page?: number; limit?: number }): Promise<Call[]> => {
-    const calls = await callsApi.getCalls(params);
-    return calls.filter(call => call.call_type === type);
+  getByType: async (type: string, params?: { page?: number; limit?: number }): Promise<CallResponse> => {
+    const response = await callsApi.getCalls(params);
+    // Filter results by type if needed (API should handle this, but keeping as backup)
+    const filteredResults = response.results.filter(call => call.call_type === type);
+    return {
+      ...response,
+      results: filteredResults,
+      count: filteredResults.length
+    };
   },
 
   // Get calls by patient phone
-  getByPatientPhone: async (phoneNumber: string, params?: { page?: number; limit?: number }): Promise<Call[]> => {
-    const calls = await callsApi.getCalls(params);
-    return calls.filter(call => call.phone_number === phoneNumber);
+  getByPatientPhone: async (phoneNumber: string, params?: { page?: number; limit?: number }): Promise<CallResponse> => {
+    const response = await callsApi.getCalls(params);
+    // Filter results by phone number if needed (API should handle this, but keeping as backup)
+    const filteredResults = response.results.filter(call => call.phone_number === phoneNumber);
+    return {
+      ...response,
+      results: filteredResults,
+      count: filteredResults.length
+    };
   },
 
   // Get recent calls (last 30 days)
-  getRecentCalls: async (days: number = 30, params?: { page?: number; limit?: number }): Promise<Call[]> => {
-    const calls = await callsApi.getCalls(params);
+  getRecentCalls: async (days: number = 30, params?: { page?: number; limit?: number }): Promise<CallResponse> => {
+    const response = await callsApi.getCalls(params);
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
 
-    return calls.filter(call =>
+    const filteredResults = response.results.filter(call =>
       new Date(call.created_at) >= cutoffDate
     );
+    
+    return {
+      ...response,
+      results: filteredResults,
+      count: filteredResults.length
+    };
   },
 };
 
@@ -136,16 +160,16 @@ export const callsUtils = {
   // Get calls for current user (based on user role and permissions)
   getUserCalls: async (userId: string, userRole?: string) => {
     try {
-      const allCalls = await callsApi.getCalls();
+      const response = await callsApi.getCalls();
 
       // If user is admin or practitioner, return all calls
       if (userRole === 'admin' || userRole === 'practitioner') {
-        return allCalls;
+        return response;
       }
 
       // For other users, filter by created calls or accessible calls
       // In a real app, you might filter by specific permissions
-      return allCalls;
+      return response;
     } catch (error) {
       console.error('Error fetching user calls:', error);
       throw error;
@@ -255,18 +279,18 @@ export const callsUtils = {
   },
 
   // Search calls by patient name or phone number
-  searchCalls: async (searchTerm: string, calls: Call[]): Promise<Call[]> => {
+  searchCalls: (searchTerm: string, calls: Call[]): Call[] => {
     if (!searchTerm) return calls;
 
     const lowerSearchTerm = searchTerm.toLowerCase();
     return calls.filter(call =>
-      (call.patient_id && call.patient_id.toLowerCase().includes(lowerSearchTerm)) ||
+      (call.patient_name && call.patient_name.toLowerCase().includes(lowerSearchTerm)) ||
       call.phone_number.toLowerCase().includes(lowerSearchTerm)
     );
   },
 
   // Filter calls by date
-  filterCallsByDate: async (startDate: string, calls: Call[]): Promise<Call[]> => {
+  filterCallsByDate: (startDate: string, calls: Call[]): Call[] => {
     if (!startDate) return calls;
 
     const filterDate = new Date(startDate);
