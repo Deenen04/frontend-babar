@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { dashboardApi, type DashboardResponse, type TodayAppointment, type DashboardReminder, type LiveCall } from '@/lib/api/dashboard';
+import { callsApi, callsUtils, type Call, type CallResponse } from '@/lib/api/calls';
+import CallDetailsModal from '@/components/CallDetailsModal';
 import {
   Dialog,
   DialogContent,
@@ -17,9 +19,13 @@ export default function Dashboard() {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedReminder, setSelectedReminder] = useState<DashboardReminder | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [callHistory, setCallHistory] = useState<any[]>([]);
+  const [callHistoryLoading, setCallHistoryLoading] = useState<boolean>(true);
+  const [selectedCall, setSelectedCall] = useState<any>(null);
 
   useEffect(() => {
     fetchDashboardData();
+    fetchCallHistory();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -34,6 +40,24 @@ export default function Dashboard() {
       console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCallHistory = async () => {
+    try {
+      setCallHistoryLoading(true);
+      
+      // Fetch recent call history (last 10 calls)
+      const response: CallResponse = await callsApi.getCalls({ page: 1, limit: 10 });
+      
+      // Convert API format to UI format
+      const uiCalls = response.results.map((call: Call) => callsUtils.formatForDisplay(call));
+      setCallHistory(uiCalls);
+      
+    } catch (error) {
+      console.error('Error fetching call history:', error);
+    } finally {
+      setCallHistoryLoading(false);
     }
   };
 
@@ -63,6 +87,54 @@ export default function Dashboard() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedReminder(null);
+  };
+
+  const getCallTypeDisplay = (call: any) => {
+    if (call.isChat) {
+      return (
+        <button 
+          className="text-primary hover:text-primary-hover underline"
+          onClick={() => setSelectedCall(call)}
+        >
+          View Chat
+        </button>
+      );
+    }
+    
+    const isIncoming = call.callType === 'Incoming call';
+    const isOutgoing = call.callType === 'Outgoing call';
+    
+    return (
+      <button 
+        className={`text-sm flex items-center gap-1 ${
+          isIncoming ? 'text-green-600' : isOutgoing ? 'text-blue-600' : 'text-primary'
+        } hover:opacity-75`}
+        onClick={() => setSelectedCall(call)}
+      >
+        {call.callType}
+        {(isIncoming || isOutgoing) && (
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+              d={isIncoming ? "M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" : 
+                     "M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"} />
+          </svg>
+        )}
+      </button>
+    );
+  };
+
+  const getStatusBadge = (status: string) => {
+    const colors = {
+      Live: 'bg-red-100 text-red-800',
+      Answered: 'bg-gray-100 text-gray-800',
+      Missed: 'bg-yellow-100 text-yellow-800',
+    };
+
+    return (
+      <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'}`}>
+        {status}
+      </span>
+    );
   };
 
   if (loading) {
@@ -171,10 +243,10 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Live calls Section */}
+        {/* Call History Section */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Live calls</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Recent Call History</h2>
             <Link href="/call-history">
               <button className="text-primary text-sm font-medium hover:text-primary-hover cursor-pointer">
                 See all
@@ -182,69 +254,80 @@ export default function Dashboard() {
             </Link>
           </div>
           
-          <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
-            {(!dashboardData || dashboardData.live_calls.length === 0) ? (
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {callHistoryLoading ? (
               <div className="p-4 text-center text-gray-500">
-                No live calls at the moment
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
+                Loading call history...
+              </div>
+            ) : callHistory.length === 0 ? (
+              <div className="p-4 text-center text-gray-500">
+                No call history found
               </div>
             ) : (
-              dashboardData.live_calls.map((call, index) => {
-                const getChatPreview = (transcriptSnippet: string) => {
-                  try {
-                    const transcriptData = JSON.parse(transcriptSnippet);
-                    if (Array.isArray(transcriptData) && transcriptData.length > 0) {
-                      const messages = [];
-                      let messageCount = 0;
-                      const maxMessages = 4; // Show up to 4 messages in preview
-
-                      for (const entry of transcriptData) {
-                        if (messageCount >= maxMessages) break;
-
-                        if (entry.bot && entry.bot.trim()) {
-                          messages.push(`AI: ${entry.bot.trim().substring(0, 20)}${entry.bot.trim().length > 20 ? '...' : ''}`);
-                          messageCount++;
-                        }
-
-                        if (messageCount >= maxMessages) break;
-
-                        if (entry.user && entry.user.trim()) {
-                          messages.push(`Patient: ${entry.user.trim().substring(0, 20)}${entry.user.trim().length > 20 ? '...' : ''}`);
-                          messageCount++;
-                        }
-                      }
-
-                      return messages.join(' • ');
-                    }
-                  } catch (e) {
-                    return transcriptSnippet || 'No transcription available';
-                  }
-                  return 'No transcription available';
-                };
-
-                const chatPreview = getChatPreview(call.transcript_snippet);
-
-                return (
-                  <div key={`${call.phone_number}-${index}`} className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">
-                          {call.patient_id ? `Patient ${call.patient_id.slice(0, 8)}...` : 'Unknown Patient'}
-                        </span>
-                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          {call.call_type === 'incoming' ? 'Incoming call' : 'Outgoing call'}
-                        </span>
-                        <span className="text-sm text-gray-500">{call.phone_number}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium mb-1">Transcription</p>
-                      <p className="text-sm text-gray-500 truncate">
-                        {chatPreview}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Patient Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Phone No.
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Call Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Duration
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {callHistory.map((call) => (
+                      <tr key={call.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {call.patientName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {call.status === 'Live' ? (
+                            <span className="text-red-600 font-medium text-sm">Live</span>
+                          ) : (
+                            getStatusBadge(call.status)
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {call.phoneNo}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {getCallTypeDisplay(call)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {call.duration === '23:45' ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4 bg-black rounded-full flex items-center justify-center">
+                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                              </div>
+                              {call.duration}
+                            </div>
+                          ) : (
+                            call.duration
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {call.date}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </section>
@@ -352,6 +435,14 @@ export default function Dashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Call Details Modal */}
+      {selectedCall && (
+        <CallDetailsModal
+          call={selectedCall}
+          onClose={() => setSelectedCall(null)}
+        />
+      )}
 
     </DashboardLayout>
   );
