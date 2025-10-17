@@ -9,7 +9,7 @@ import { axiosInstance } from '@/lib/axios';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type ViewType = 'Day' | 'Week';
-type StaffType = 'Doctor 1' | 'Doctor 2' | 'Nurse' | 'Pragmafer';
+type StaffType = 'Dr. August' | 'Dr. Terrani' | 'Nurse' | 'Pragmafer';
 
 // UI-friendly appointment interface
 interface UIAppointment {
@@ -33,7 +33,7 @@ const timeSlots = [
 ];
 
 export default function Calendar() {
-  const [activeStaff, setActiveStaff] = useState<StaffType>('Doctor 1');
+  const [activeStaff, setActiveStaff] = useState<StaffType>('Dr. August');
   const [currentView, setCurrentView] = useState<ViewType>('Day');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -64,12 +64,12 @@ export default function Calendar() {
     sunday: { active: false, startTime: '09:00', endTime: '17:00' },
   });
   const [saving, setSaving] = useState(false);
-  const staffTabs: StaffType[] = ['Doctor 1', 'Doctor 2', 'Nurse', 'Pragmafer'];
+  const staffTabs: StaffType[] = ['Dr. August', 'Dr. Terrani', 'Nurse', 'Pragmafer'];
 
   // Map staff types to practitioner IDs
   const staffToPractitionerId: Record<StaffType, string> = {
-    'Doctor 1': 'user_august',
-    'Doctor 2': 'user_terrani',
+    'Dr. August': 'user_august',
+    'Dr. Terrani': 'user_terrani',
     'Nurse': 'nurse',
     'Pragmafer': 'pragmafer'
   };
@@ -122,8 +122,8 @@ export default function Calendar() {
     try {
       // Map staff names to practitioner IDs
       const practitionerIdMap: Record<string, string> = {
-        'Doctor 1': 'user_august',
-        'Doctor 2': 'user_terrani',
+        'Dr. August': 'user_august',
+        'Dr. Terrani': 'user_terrani',
         'Nurse': 'nurse',
         'Pragmafer': 'pragmafer'
       };
@@ -270,7 +270,7 @@ export default function Calendar() {
         // Convert API appointments to UI format
         const uiAppointmentsData = filteredAppointments.map(appointment => {
           // Map practitioner_id and appointment_type_id to staff type
-          let staffType: StaffType = 'Doctor 1';
+          let staffType: StaffType = 'Dr. August';
           let displayName = 'Appointment';
 
           const practitionerId = appointment.practitioner_id?.toLowerCase() || '';
@@ -287,25 +287,30 @@ export default function Calendar() {
             staffType = 'Pragmafer';
             displayName = 'Pragmafer';
           }
-          // Default to Doctor - distinguish between Doctor 1 and Doctor 2
+          // Default to Doctor - distinguish between Dr. August and Dr. Terrani
           else {
             // Extract doctor name from practitioner_id (e.g., "user_august" -> "Dr. August")
             if (practitionerId.includes('august')) {
-              staffType = 'Doctor 1';
+              staffType = 'Dr. August';
               displayName = 'Dr. August';
             } else if (practitionerId.includes('terrani')) {
-              staffType = 'Doctor 2';
+              staffType = 'Dr. Terrani';
               displayName = 'Dr. Terrani';
             } else {
-              staffType = 'Doctor 1';
+              staffType = 'Dr. August';
               displayName = 'Doctor Appointment';
             }
           }
           
-          // Try to get appointment type name if available
-          const appointmentType = types.find(type => type.id === appointment.appointment_type_id);
-          if (appointmentType?.name) {
-            displayName = appointmentType.name;
+          // For doctor appointments, always show the doctor name, not appointment type
+          if (staffType === 'Dr. August' || staffType === 'Dr. Terrani') {
+            // Keep the doctor name as displayName
+          } else {
+            // For non-doctor appointments, try to get appointment type name if available
+            const appointmentType = types.find(type => type.id === appointment.appointment_type_id);
+            if (appointmentType?.name) {
+              displayName = appointmentType.name;
+            }
           }
 
           // Format time to 12-hour format
@@ -803,7 +808,7 @@ export default function Calendar() {
                     className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Doctor</option>
-                    {staffTabs.filter(staff => staff !== 'Doctor 1').map(staff => (
+                    {staffTabs.filter(staff => staff !== 'Dr. August').map(staff => (
                       <option key={staff} value={staff}>{staff}</option>
                     ))}
                   </select>
