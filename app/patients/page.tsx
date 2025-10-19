@@ -6,6 +6,8 @@ import DashboardLayout from '@/components/DashboardLayout';
 import PatientsList from '@/components/PatientsList';
 import AddPatientForm from '@/components/AddPatientForm';
 import PatientDetails from '@/components/PatientDetails';
+import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
+import { ToastProvider, useToast } from '@/lib/toast-context';
 import { patientsApi, patientsUtils, Patient as APIPatient } from '@/lib/api';
 
 // Patients page with real API integration
@@ -33,11 +35,15 @@ export type ViewType = 'list' | 'add' | 'edit' | 'details';
 function PatientsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { showSuccess, showError } = useToast();
   const [currentView, setCurrentView] = useState<ViewType>('list');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Get search term from URL
   const searchTerm = searchParams.get('search') || '';
@@ -136,21 +142,40 @@ function PatientsContent() {
     setSelectedPatient(null);
   };
 
+  // Open delete confirmation modal
+  const handleDeletePatientClick = (patient: Patient) => {
+    setPatientToDelete(patient);
+    setDeleteModalOpen(true);
+  };
+
   // Delete patient using API
-  const handleDeletePatient = async (patientId: string) => {
+  const handleDeletePatientConfirm = async () => {
+    if (!patientToDelete) return;
+
+    setDeleteLoading(true);
     try {
       setError(null);
 
       // Delete patient using API (soft delete)
-      await patientsApi.delete(patientId);
+      await patientsApi.delete(patientToDelete.id);
 
       // Remove from local state
-      const updatedPatients = patients.filter(patient => patient.id !== patientId);
+      const updatedPatients = patients.filter(patient => patient.id !== patientToDelete.id);
       setPatients(updatedPatients);
+
+      // Show success toast
+      showSuccess('Patient deleted successfully', `${patientToDelete.first_name} ${patientToDelete.last_name} has been removed.`);
+
+      // Close modal and reset state
+      setDeleteModalOpen(false);
+      setPatientToDelete(null);
 
     } catch (err) {
       console.error('Error deleting patient:', err);
       setError('Failed to delete patient. Please try again.');
+      showError('Failed to delete patient', 'Please try again.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -181,15 +206,29 @@ function PatientsContent() {
         ) : null;
       default:
         return (
-          <PatientsList
-            patients={patients}
-            searchTerm={searchTerm}
-            onSearchChange={handleSearchChange}
-            onAddPatient={() => setCurrentView('add')}
-            onViewPatient={handleViewPatient}
-            onEditPatient={handleEditPatientForm}
-            onDeletePatient={handleDeletePatient}
-          />
+          <>
+            <PatientsList
+              patients={patients}
+              searchTerm={searchTerm}
+              onSearchChange={handleSearchChange}
+              onAddPatient={() => setCurrentView('add')}
+              onViewPatient={handleViewPatient}
+              onEditPatient={handleEditPatientForm}
+              onDeletePatient={handleDeletePatientClick}
+            />
+
+            <DeleteConfirmationModal
+              isOpen={deleteModalOpen}
+              onClose={() => {
+                setDeleteModalOpen(false);
+                setPatientToDelete(null);
+              }}
+              onConfirm={handleDeletePatientConfirm}
+              title="Delete Patient"
+              description={`Are you sure you want to delete ${patientToDelete?.first_name} ${patientToDelete?.last_name}? This action cannot be undone.`}
+              isLoading={deleteLoading}
+            />
+          </>
         );
     }
   };
@@ -237,8 +276,10 @@ function PatientsContent() {
 
 export default function Patients() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <PatientsContent />
-    </Suspense>
+    <ToastProvider>
+      <Suspense fallback={<div>Loading...</div>}>
+        <PatientsContent />
+      </Suspense>
+    </ToastProvider>
   );
 }

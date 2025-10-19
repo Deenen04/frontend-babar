@@ -330,7 +330,9 @@ export default function Calendar() {
 
           // Format patient display
           let patientDisplay = 'Available';
-          if (appointment.patient_phone) {
+          if (appointment.patient_name && appointment.patient_name.trim()) {
+            patientDisplay = appointment.patient_name;
+          } else if (appointment.patient_phone) {
             patientDisplay = appointment.patient_phone;
           } else if (appointment.status === 'available') {
             patientDisplay = 'Available';
@@ -922,21 +924,25 @@ export default function Calendar() {
 
           {selectedAppointment && (
             <div className="space-y-6">
-              {/* Status Badge */}
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">Status:</span>
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    selectedAppointment.status === 'confirmed'
-                      ? 'bg-blue-100 text-blue-800'
-                      : selectedAppointment.status === 'available'
-                      ? 'bg-green-100 text-green-800'
-                      : selectedAppointment.status === 'cancelled'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {selectedAppointment.status.charAt(0).toUpperCase() + selectedAppointment.status.slice(1)}
-                  </span>
+
+              {/* Patient Information */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-blue-900 mb-3">Patient Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-blue-700 mb-1">Patient Name</h4>
+                    <p className="text-lg font-semibold text-blue-900">
+                      {selectedAppointment.patient_name && selectedAppointment.patient_name.trim() 
+                        ? selectedAppointment.patient_name 
+                        : 'Not provided'}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-blue-700 mb-1">Phone Number</h4>
+                    <p className="text-lg text-blue-900">
+                      {selectedAppointment.patient_phone || 'Not provided'}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -948,9 +954,9 @@ export default function Calendar() {
                 </div>
 
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Patient Phone</h3>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Status</h3>
                   <p className="text-sm text-gray-900">
-                    {selectedAppointment.patient_phone || 'Not provided'}
+                    {selectedAppointment.status.charAt(0).toUpperCase() + selectedAppointment.status.slice(1)}
                   </p>
                 </div>
 

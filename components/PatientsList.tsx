@@ -9,7 +9,7 @@ interface PatientsListProps {
   onAddPatient: () => void;
   onViewPatient: (patient: Patient) => void;
   onEditPatient: (patient: Patient) => void;
-  onDeletePatient?: (patientId: string) => void;
+  onDeletePatient?: (patient: Patient) => void;
 }
 
 export default function PatientsList({ patients, searchTerm, onSearchChange, onAddPatient, onViewPatient, onEditPatient, onDeletePatient }: PatientsListProps) {
@@ -142,9 +142,7 @@ export default function PatientsList({ patients, searchTerm, onSearchChange, onA
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (confirm('Are you sure you want to delete this patient?')) {
-                              onDeletePatient(patient.id);
-                            }
+                            onDeletePatient(patient);
                           }}
                           className="text-red-400 hover:text-red-600"
                           title="Delete patient"

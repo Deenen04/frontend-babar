@@ -119,6 +119,13 @@ export default function BookAppointment() {
       const dateString = bookingData.selectedDate.toISOString().split('T')[0];
       const appointmentsForDate = await appointmentsApi.getByDate(dateString);
 
+      // Ensure appointmentsForDate is an array before filtering
+      if (!Array.isArray(appointmentsForDate)) {
+        console.warn('Appointments data is not an array:', appointmentsForDate);
+        setAvailableSlots([]);
+        return;
+      }
+
       // Filter for available slots for the selected practitioner and appointment type
       const availableAppointments = appointmentsForDate.filter(appointment =>
         appointment.practitioner_id === bookingData.practitionerId &&
@@ -241,6 +248,7 @@ export default function BookAppointment() {
 
       const appointmentData: CreateAppointmentRequest = {
         patient_phone: bookingData.contactNumber,
+        patient_name: bookingData.patientName,
         practitioner_id: bookingData.practitionerId,
         appointment_type_id: bookingData.appointmentTypeId,
         appointment_date: bookingData.selectedDate.toISOString().split('T')[0],

@@ -4,6 +4,7 @@ import { axiosInstance } from '../axios';
 export interface Appointment {
   id: string;
   patient_phone?: string;
+  patient_name?: string;
   practitioner_id: string;
   appointment_type_id: string;
   appointment_date: string;
@@ -15,6 +16,7 @@ export interface Appointment {
   created_at: string;
   updated_at: string;
   call_id?: string;
+  working_hours_id?: string;
 }
 
 export interface AppointmentType {
@@ -29,6 +31,7 @@ export interface AppointmentType {
 
 export interface CreateAppointmentRequest {
   patient_phone?: string;
+  patient_name?: string;
   practitioner_id: string;
   appointment_type_id: string;
   appointment_date: string;
@@ -41,6 +44,7 @@ export interface CreateAppointmentRequest {
 
 export interface UpdateAppointmentRequest {
   patient_phone?: string;
+  patient_name?: string;
   practitioner_id?: string;
   appointment_type_id?: string;
   appointment_date?: string;
@@ -75,13 +79,29 @@ export const appointmentsApi = {
   // Get all appointments with pagination and filters
   getAll: async (params?: AppointmentQueryParams): Promise<AppointmentResponse> => {
     const response = await axiosInstance.get('/appointments', { params });
-    return response.data as AppointmentResponse;
+    const data = response.data;
+    
+    // Handle both paginated response and direct array response
+    if (Array.isArray(data)) {
+      return {
+        page: 1,
+        limit: data.length,
+        count: data.length,
+        results: data
+      };
+    }
+    
+    return data as AppointmentResponse;
   },
 
   // Get appointments data (extract results from paginated response)
   getAppointments: async (params?: AppointmentQueryParams): Promise<Appointment[]> => {
     const response = await appointmentsApi.getAll(params);
-    return response.results;
+    // Handle both paginated response and direct array response
+    if (Array.isArray(response)) {
+      return response;
+    }
+    return response.results || [];
   },
 
   // Get single appointment
@@ -246,7 +266,11 @@ export const appointmentsUtils = {
       title: `Appointment`, // Would need to fetch appointment type name
       startTime: formatTime(appointment.start_time),
       endTime: formatTime(appointment.end_time),
-      patient: appointment.patient_phone ? `Patient ${appointment.patient_phone}` : 'No Patient',
+      patient: appointment.patient_name && appointment.patient_name.trim() 
+        ? appointment.patient_name 
+        : appointment.patient_phone 
+        ? `Patient ${appointment.patient_phone}` 
+        : 'No Patient',
       type: 'Doctor', // Would need to map from appointment_type_id
       day: dayOfMonth,
     };
@@ -265,6 +289,7 @@ export const appointmentsUtils = {
 
       return await appointmentsApi.create({
         patient_phone: formData.patientPhone,
+        patient_name: formData.patientName,
         practitioner_id: formData.practitionerId || userId,
         appointment_type_id: formData.appointmentTypeId || 'default-type-id',
         appointment_date: appointmentDate.toISOString().split('T')[0],
