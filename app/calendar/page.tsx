@@ -604,23 +604,18 @@ export default function Calendar() {
                           ? 'bg-blue-100 border-blue-500 hover:bg-blue-200'
                           : 'bg-gray-100 border-gray-500 hover:bg-gray-200'
                       }`}>
-                        <div className={`font-semibold truncate leading-tight ${
-                          isAvailable ? 'text-green-900' : isConfirmed ? 'text-blue-900' : 'text-gray-900'
-                        }`}>
-                          {appointment.title}
-                        </div>
-                        <div className={`truncate leading-tight ${
-                          isAvailable ? 'text-green-700' : isConfirmed ? 'text-blue-700' : 'text-gray-700'
-                        }`}>
-                          {appointment.startTime}
-                        </div>
                         {style.height && parseInt(style.height) > 50 && (
-                          <div className={`truncate leading-tight font-medium ${
+                          <div className={`truncate leading-tight font-semibold ${
                             isAvailable ? 'text-green-600' : isConfirmed ? 'text-blue-600' : 'text-gray-600'
                           }`}>
                             {appointment.patient}
                           </div>
                         )}
+                        <div className={`truncate leading-tight ${
+                          isAvailable ? 'text-green-700' : isConfirmed ? 'text-blue-700' : 'text-gray-700'
+                        }`}>
+                          {appointment.startTime}
+                        </div>
                       </div>
                     </div>
                   );
