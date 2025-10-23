@@ -23,14 +23,24 @@ interface UIAppointment {
   status?: string;
 }
 
-const timeSlots = [
-  '08:00 AM', '08:20 AM', '08:40 AM', '09:00 AM', '09:20 AM', '09:40 AM',
-  '10:00 AM', '10:20 AM', '10:40 AM', '11:00 AM', '11:20 AM', '11:40 AM',
-  '12:00 PM', '12:20 PM', '12:40 PM', '01:00 PM', '01:20 PM', '01:40 PM',
-  '02:00 PM', '02:20 PM', '02:40 PM', '03:00 PM', '03:20 PM', '03:40 PM',
-  '04:00 PM', '04:20 PM', '04:40 PM', '05:00 PM', '05:20 PM', '05:40 PM',
-  '06:00 PM'
-];
+// Generate time slots based on staff type
+const generateTimeSlots = (staffType: StaffType): string[] => {
+  const interval = staffType === 'Pragmafer' ? 30 : 20; // 30 min for Pragmafer, 20 min for others
+  const slots: string[] = [];
+  
+  for (let hour = 8; hour <= 18; hour++) {
+    for (let minute = 0; minute < 60; minute += interval) {
+      if (hour === 18 && minute > 0) break; // Stop at 6:00 PM
+      
+      const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const timeStr = `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
+      slots.push(timeStr);
+    }
+  }
+  
+  return slots;
+};
 
 export default function Calendar() {
   const [activeStaff, setActiveStaff] = useState<StaffType>('Dr. August');
@@ -399,6 +409,10 @@ export default function Calendar() {
       return apt.type === activeStaff;
     });
 
+    // Get time slots for current staff type
+    const timeSlots = generateTimeSlots(activeStaff);
+    const interval = activeStaff === 'Pragmafer' ? 30 : 20;
+
     // Helper to convert time string to minutes from start of day (8:00 AM)
     const timeToMinutes = (timeStr: string) => {
       const [time, period] = timeStr.split(' ');
@@ -412,7 +426,7 @@ export default function Calendar() {
 
     // Start time is 8:00 AM (480 minutes from midnight)
     const startMinutes = timeToMinutes('08:00 AM');
-    const pixelsPerMinute = 80 / 20; // 80px height per 20-minute slot = 4px per minute
+    const pixelsPerMinute = 80 / interval; // 80px height per slot = pixels per minute
 
     const getAppointmentStyle = (appointment: UIAppointment) => {
       const startMins = timeToMinutes(appointment.startTime);
@@ -430,7 +444,7 @@ export default function Calendar() {
         {/* Time Column */}
         <div className="w-24 pr-4">
           {timeSlots.map(time => (
-            <div key={time} className="h-20 border-b border-gray-100 flex items-start pt-2">
+            <div key={time} className="border-b border-gray-100 flex items-start pt-2" style={{ height: `${80}px` }}>
               <span className="text-sm text-gray-500">{time}</span>
             </div>
           ))}
@@ -442,8 +456,8 @@ export default function Calendar() {
           {timeSlots.map((time, index) => (
             <div 
               key={time} 
-              className="absolute left-0 right-0 h-20 border-b border-gray-100"
-              style={{ top: `${index * 80}px` }}
+              className="absolute left-0 right-0 border-b border-gray-100"
+              style={{ top: `${index * 80}px`, height: `${80}px` }}
             />
           ))}
           
@@ -467,10 +481,10 @@ export default function Calendar() {
                     ? 'bg-blue-100 border-blue-500 hover:bg-blue-200'
                     : 'bg-gray-100 border-gray-500 hover:bg-gray-200'
                 }`}>
-                  <div className={`text-sm font-semibold truncate ${
-                    isAvailable ? 'text-green-900' : isConfirmed ? 'text-blue-900' : 'text-gray-900'
+                  <div className={`text-xs mt-1 font-semibold truncate ${
+                    isAvailable ? 'text-green-600' : isConfirmed ? 'text-blue-600' : 'text-gray-600'
                   }`}>
-                    {appointment.title}
+                    {appointment.patient}
                   </div>
                   <div className={`flex items-center gap-1 text-xs mt-1 ${
                     isAvailable ? 'text-green-700' : isConfirmed ? 'text-blue-700' : 'text-gray-700'
@@ -479,11 +493,6 @@ export default function Calendar() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span className="truncate">{appointment.startTime} - {appointment.endTime}</span>
-                  </div>
-                  <div className={`text-xs mt-1 font-medium truncate ${
-                    isAvailable ? 'text-green-600' : isConfirmed ? 'text-blue-600' : 'text-gray-600'
-                  }`}>
-                    {appointment.patient}
                   </div>
                 </div>
               </div>
@@ -498,6 +507,10 @@ export default function Calendar() {
     // Filter appointments for the week view and selected staff type
     const weekAppointments = uiAppointments.filter(apt => apt.day && apt.type === activeStaff);
 
+    // Get time slots for current staff type
+    const timeSlots = generateTimeSlots(activeStaff);
+    const interval = activeStaff === 'Pragmafer' ? 30 : 20;
+
     // Helper to convert time string to minutes from start of day
     const timeToMinutes = (timeStr: string) => {
       const [time, period] = timeStr.split(' ');
@@ -511,7 +524,7 @@ export default function Calendar() {
 
     // Start time is 8:00 AM
     const startMinutes = timeToMinutes('08:00 AM');
-    const pixelsPerMinute = 64 / 20; // 64px height per 20-minute slot = 3.2px per minute
+    const pixelsPerMinute = 64 / interval; // 64px height per slot = pixels per minute
 
     const getAppointmentStyle = (appointment: UIAppointment) => {
       const startMins = timeToMinutes(appointment.startTime);
@@ -530,7 +543,7 @@ export default function Calendar() {
         <div className="grid grid-cols-8 gap-0 mb-4">
           <div className="text-sm text-gray-500 p-2">
             <div>Clock Interval</div>
-            <div className="font-medium text-black">20 min</div>
+            <div className="font-medium text-black">{interval} min</div>
           </div>
           {weekDays.map(day => (
             <div key={day.fullDate.toISOString()} className="text-center p-2">
@@ -547,7 +560,7 @@ export default function Calendar() {
           {/* Time Column */}
           <div className="pr-2">
             {timeSlots.map(time => (
-              <div key={time} className="h-16 border-b border-gray-100 flex items-start pt-1">
+              <div key={time} className="border-b border-gray-100 flex items-start pt-1" style={{ height: `${64}px` }}>
                 <span className="text-xs text-gray-500">{time}</span>
               </div>
             ))}
@@ -564,8 +577,8 @@ export default function Calendar() {
               {timeSlots.map((time, timeIndex) => (
                 <div 
                   key={time} 
-                  className="absolute left-0 right-0 h-16 border-b border-gray-100"
-                  style={{ top: `${timeIndex * 64}px` }}
+                  className="absolute left-0 right-0 border-b border-gray-100"
+                  style={{ top: `${timeIndex * 64}px`, height: `${64}px` }}
                 />
               ))}
               

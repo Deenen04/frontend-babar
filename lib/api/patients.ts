@@ -102,6 +102,12 @@ export const patientsApi = {
     return response.data as any;
   },
 
+  // Patch patient (partial update)
+  patch: async (patientId: string, data: Partial<UpdatePatientRequest>): Promise<Patient> => {
+    const response = await axiosInstance.patch(`/patients/${patientId}`, data);
+    return response.data as any;
+  },
+
   // Delete patient (soft delete)
   delete: async (patientId: string): Promise<{ message: string }> => {
     const response = await axiosInstance.delete(`/patients/${patientId}`);

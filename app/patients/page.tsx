@@ -4,8 +4,6 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import PatientsList from '@/components/PatientsList';
-import AddPatientForm from '@/components/AddPatientForm';
-import PatientDetails from '@/components/PatientDetails';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import { ToastProvider, useToast } from '@/lib/toast-context';
 import { patientsApi, patientsUtils, Patient as APIPatient } from '@/lib/api';
@@ -29,14 +27,10 @@ export type Patient = {
   note?: string;
 };
 
-export type ViewType = 'list' | 'add' | 'edit' | 'details';
-
 function PatientsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { showSuccess, showError } = useToast();
-  const [currentView, setCurrentView] = useState<ViewType>('list');
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,62 +77,16 @@ function PatientsContent() {
     loadPatients();
   }, []);
 
-  // Add new patient using API
-  const handleAddPatient = async (patient: Omit<Patient, 'id'>) => {
-    try {
-      setError(null);
-
-      // Create patient using API
-      const apiPatient = await patientsUtils.createFromForm(patient, 'user-123');
-
-      // Convert to UI format and add to local state
-      const uiPatient = patientsUtils.formatForDisplay(apiPatient);
-      setPatients([...patients, uiPatient]);
-
-      setCurrentView('list');
-    } catch (err) {
-      console.error('Error adding patient:', err);
-      setError('Failed to add patient. Please try again.');
-    }
-  };
-
-  // Update existing patient using API
-  const handleEditPatient = async (updatedPatient: Patient | Omit<Patient, 'id'>) => {
-    try {
-      setError(null);
-
-      if ('id' in updatedPatient && updatedPatient.id) {
-        // Update patient using API
-        const apiPatient = await patientsUtils.updateFromForm(updatedPatient.id, updatedPatient);
-
-        // Convert to UI format and update local state
-        const uiPatient = patientsUtils.formatForDisplay(apiPatient);
-        const updatedPatients = patients.map(patient =>
-          patient.id === updatedPatient.id ? uiPatient : patient
-        );
-        setPatients(updatedPatients);
-      }
-
-      setCurrentView('list');
-    } catch (err) {
-      console.error('Error updating patient:', err);
-      setError('Failed to update patient. Please try again.');
-    }
-  };
-
   const handleViewPatient = (patient: Patient) => {
-    setSelectedPatient(patient);
-    setCurrentView('details');
+    router.push(`/patients/${patient.id}`);
   };
 
   const handleEditPatientForm = (patient: Patient) => {
-    setSelectedPatient(patient);
-    setCurrentView('edit');
+    router.push(`/patients/${patient.id}/edit`);
   };
 
-  const handleBackToList = () => {
-    setCurrentView('list');
-    setSelectedPatient(null);
+  const handleAddPatient = () => {
+    router.push('/patients/add');
   };
 
   // Open delete confirmation modal
@@ -178,59 +126,6 @@ function PatientsContent() {
     }
   };
 
-  const renderContent = () => {
-    switch (currentView) {
-      case 'add':
-        return (
-          <AddPatientForm
-            onCancel={handleBackToList}
-            onSubmit={handleAddPatient}
-          />
-        );
-      case 'edit':
-        return selectedPatient ? (
-          <AddPatientForm
-            onCancel={handleBackToList}
-            onSubmit={handleEditPatient}
-            patient={selectedPatient}
-            isEdit={true}
-          />
-        ) : null;
-      case 'details':
-        return selectedPatient ? (
-          <PatientDetails
-            patient={selectedPatient}
-            onBack={handleBackToList}
-          />
-        ) : null;
-      default:
-        return (
-          <>
-            <PatientsList
-              patients={patients}
-              searchTerm={searchTerm}
-              onSearchChange={handleSearchChange}
-              onAddPatient={() => setCurrentView('add')}
-              onViewPatient={handleViewPatient}
-              onEditPatient={handleEditPatientForm}
-              onDeletePatient={handleDeletePatientClick}
-            />
-
-            <DeleteConfirmationModal
-              isOpen={deleteModalOpen}
-              onClose={() => {
-                setDeleteModalOpen(false);
-                setPatientToDelete(null);
-              }}
-              onConfirm={handleDeletePatientConfirm}
-              title="Delete Patient"
-              description={`Are you sure you want to delete ${patientToDelete?.first_name} ${patientToDelete?.last_name}? This action cannot be undone.`}
-              isLoading={deleteLoading}
-            />
-          </>
-        );
-    }
-  };
 
   return (
     <DashboardLayout title="Patients">
@@ -257,7 +152,7 @@ function PatientsContent() {
           </div>
         )}
 
-        {/* Content based on current view */}
+        {/* Content */}
         {loading ? (
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
@@ -266,7 +161,29 @@ function PatientsContent() {
             </div>
           </div>
         ) : (
-          renderContent()
+          <>
+            <PatientsList
+              patients={patients}
+              searchTerm={searchTerm}
+              onSearchChange={handleSearchChange}
+              onAddPatient={handleAddPatient}
+              onViewPatient={handleViewPatient}
+              onEditPatient={handleEditPatientForm}
+              onDeletePatient={handleDeletePatientClick}
+            />
+
+            <DeleteConfirmationModal
+              isOpen={deleteModalOpen}
+              onClose={() => {
+                setDeleteModalOpen(false);
+                setPatientToDelete(null);
+              }}
+              onConfirm={handleDeletePatientConfirm}
+              title="Delete Patient"
+              description={`Are you sure you want to delete ${patientToDelete?.first_name} ${patientToDelete?.last_name}? This action cannot be undone.`}
+              isLoading={deleteLoading}
+            />
+          </>
         )}
       </div>
     </DashboardLayout>

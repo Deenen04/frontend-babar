@@ -6,6 +6,14 @@ import { Patient } from '@/app/patients/page';
 interface PatientDetailsProps {
   patient: Patient;
   onBack: () => void;
+  onEdit?: () => void;
+  notesValue?: string;
+  isEditingNotes?: boolean;
+  savingNotes?: boolean;
+  onEditNotes?: () => void;
+  onSaveNotes?: () => void;
+  onCancelNotes?: () => void;
+  onNotesChange?: (value: string) => void;
 }
 
 type TabType = 'general' | 'appointments';
@@ -57,7 +65,18 @@ const sampleAppointments: Appointment[] = [
   },
 ];
 
-export default function PatientDetails({ patient, onBack }: PatientDetailsProps) {
+export default function PatientDetails({ 
+  patient, 
+  onBack, 
+  onEdit, 
+  notesValue = '', 
+  isEditingNotes = false, 
+  savingNotes = false, 
+  onEditNotes, 
+  onSaveNotes, 
+  onCancelNotes, 
+  onNotesChange 
+}: PatientDetailsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [appointmentType, setAppointmentType] = useState<AppointmentType>('upcoming');
   const [selectedDate, setSelectedDate] = useState('Sep 11 2025');
@@ -68,12 +87,17 @@ export default function PatientDetails({ patient, onBack }: PatientDetailsProps)
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-medium text-gray-900">Personal Information</h3>
-          <button className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">
-            Edit
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
+          {onEdit && (
+            <button 
+              onClick={onEdit}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Edit
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+          )}
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -122,10 +146,63 @@ export default function PatientDetails({ patient, onBack }: PatientDetailsProps)
 
       {/* Note */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Note</h3>
-        <div className="min-h-[100px] p-3 border border-gray-200 rounded-md bg-gray-50">
-          <p className="text-gray-500 text-sm">No notes available</p>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Notes</h3>
+          {!isEditingNotes && onEditNotes && (
+            <button 
+              onClick={onEditNotes}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Edit Notes
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+          )}
         </div>
+        
+        {isEditingNotes ? (
+          <div className="space-y-4">
+            <textarea
+              value={notesValue}
+              onChange={(e) => onNotesChange?.(e.target.value)}
+              rows={4}
+              placeholder="Enter medical notes..."
+              className="w-full px-3 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+            />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onSaveNotes}
+                disabled={savingNotes}
+                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingNotes ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Saving...
+                  </div>
+                ) : (
+                  'Save Notes'
+                )}
+              </button>
+              <button
+                onClick={onCancelNotes}
+                disabled={savingNotes}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="min-h-[100px] p-3 border border-gray-200 rounded-md bg-gray-50">
+            {notesValue ? (
+              <p className="text-gray-900 text-sm whitespace-pre-wrap">{notesValue}</p>
+            ) : (
+              <p className="text-gray-500 text-sm">No medical notes available</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

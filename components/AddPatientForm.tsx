@@ -8,9 +8,10 @@ interface AddPatientFormProps {
   onSubmit: (patient: Omit<Patient, 'id'> | Patient) => void;
   patient?: Patient;
   isEdit?: boolean;
+  isLoading?: boolean;
 }
 
-export default function AddPatientForm({ onCancel, onSubmit, patient, isEdit = false }: AddPatientFormProps) {
+export default function AddPatientForm({ onCancel, onSubmit, patient, isEdit = false, isLoading = false }: AddPatientFormProps) {
   const [formData, setFormData] = useState({
     first_name: patient?.first_name || '',
     last_name: patient?.last_name || '',
@@ -81,9 +82,17 @@ export default function AddPatientForm({ onCancel, onSubmit, patient, isEdit = f
           </button>
           <button
             onClick={handleSubmit}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover"
+            disabled={isLoading}
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isEdit ? 'Save Changes' : 'Add Patient'}
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                {isEdit ? 'Saving...' : 'Adding...'}
+              </div>
+            ) : (
+              isEdit ? 'Save Changes' : 'Add Patient'
+            )}
           </button>
         </div>
       </div>
