@@ -49,6 +49,7 @@ export interface CallResponse {
   page: number;
   limit: number;
   count: number;
+  total_calls?: number;
   results: Call[];
 }
 

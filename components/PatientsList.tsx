@@ -69,9 +69,6 @@ export default function PatientsList({ patients, searchTerm, onSearchChange, onA
                   Date of Birth
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ext
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Phone No.
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -99,12 +96,6 @@ export default function PatientsList({ patients, searchTerm, onSearchChange, onA
                     className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
                   >
                     {patient.dateOfBirth}
-                  </td>
-                  <td 
-                    onClick={() => onViewPatient(patient)}
-                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
-                  >
-                    {patient.ext}
                   </td>
                   <td 
                     onClick={() => onViewPatient(patient)}

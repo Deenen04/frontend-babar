@@ -17,7 +17,6 @@ export type Patient = {
   first_name: string;
   last_name: string;
   dateOfBirth: string;
-  ext: string;
   phoneNo: string;
   insuranceProvider: string | null;
   insuranceId: string | null;

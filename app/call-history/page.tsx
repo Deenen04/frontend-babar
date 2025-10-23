@@ -80,9 +80,11 @@ export default function CallHistory() {
         const uiCalls = response.results.map((call: Call) => callsUtils.formatForDisplay(call));
 
         setCalls(uiCalls);
-        setTotalCalls(response.count);
-        setTotalCount(response.count);
-        setTotalPages(Math.ceil(response.count / pageSize));
+        // Use total_calls if available, otherwise fall back to count
+        const totalCallsCount = response.total_calls || response.count;
+        setTotalCalls(totalCallsCount);
+        setTotalCount(totalCallsCount);
+        setTotalPages(Math.ceil(totalCallsCount / pageSize));
       } catch (err) {
         console.error('Error loading calls:', err);
         setError('Failed to load calls. Please try again.');
@@ -352,12 +354,12 @@ export default function CallHistory() {
         )}
 
         {/* Pagination */}
-        {!loading && totalCount > 0 && (
+        {!loading && totalCalls > 0 && (
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-700">
-              Showing Calls <span className="font-medium">{((currentPage - 1) * pageSize) + 1}</span> to{' '}
-              <span className="font-medium">{Math.min(currentPage * pageSize, totalCount)}</span> of{' '}
-              <span className="font-medium">{totalCount}</span> entries
+              Showing <span className="font-medium">{((currentPage - 1) * pageSize) + 1}</span> to{' '}
+              <span className="font-medium">{Math.min(currentPage * pageSize, totalCalls)}</span> of{' '}
+              <span className="font-medium">{totalCalls}</span> calls
             </div>
 
             <nav className="flex items-center gap-2">
@@ -455,7 +457,7 @@ export default function CallHistory() {
         )}
 
         {/* Empty State */}
-        {!loading && filteredCalls.length === 0 && (
+        {!loading && totalCalls === 0 && (
           <div className="text-center py-12">
             <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
