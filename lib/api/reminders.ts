@@ -9,6 +9,7 @@ export type ReminderType = 'Prescription' | 'Callback' | 'Follow-up';
 export interface Reminder {
   id: string;
   patient_id: string | null;
+  patient_name: string | null;
   appointment_id: string | null;
   call_id: string | null;
   reminder_type: string;
@@ -277,10 +278,13 @@ export const remindersUtils = {
       }
     };
 
-    // Handle patient name - when patient_id is null, show phone number or fallback
+    // Handle patient name - prioritize patient_name from API, then patient_id, then phone
     const getPatientName = (): string => {
+      if (reminder.patient_name) {
+        return reminder.patient_name;
+      }
       if (reminder.patient_id) {
-        return `Patient ${reminder.patient_id}`; // Would need to fetch actual patient details
+        return `Patient ${reminder.patient_id}`;
       }
       return reminder.patient_phone ? `Phone: ${reminder.patient_phone}` : 'Unknown Patient';
     };
