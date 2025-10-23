@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -110,7 +110,15 @@ function RemindersContent() {
   const filteredReminders = reminders;
 
 
-  const toggleExpanded = (reminderId: string) => {
+  const scrollPositionRef = useRef<number>(0);
+
+  const toggleExpanded = useCallback((reminderId: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Store current scroll position
+    scrollPositionRef.current = window.scrollY;
+    
     setExpandedReminders(prev => {
       const newSet = new Set(prev);
       if (newSet.has(reminderId)) {
@@ -120,7 +128,15 @@ function RemindersContent() {
       }
       return newSet;
     });
-  };
+  }, []);
+
+  // Effect to restore scroll position after state changes
+  useEffect(() => {
+    if (scrollPositionRef.current > 0) {
+      window.scrollTo(0, scrollPositionRef.current);
+      scrollPositionRef.current = 0;
+    }
+  }, [expandedReminders]);
 
   const getPriorityBadgeColor = (priority: ReminderPriority) => {
     switch (priority) {
@@ -151,6 +167,7 @@ function RemindersContent() {
   const ReminderCard = ({ reminder }: { reminder: Reminder }) => {
     const isExpanded = expandedReminders.has(reminder.id);
     const truncatedDescription = reminder.taskDescription.slice(0, 100) + '...';
+    const shouldShowToggle = reminder.taskDescription.length > 100;
 
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -178,12 +195,6 @@ function RemindersContent() {
                 Move to Completed
               </button>
             )}
-            
-            <button className="text-gray-400 hover:text-gray-600">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-              </svg>
-            </button>
           </div>
         </div>
 
@@ -228,12 +239,14 @@ function RemindersContent() {
           <p className="text-sm text-gray-600 mb-2">
             {isExpanded ? reminder.taskDescription : truncatedDescription}
           </p>
-          <button
-            onClick={() => toggleExpanded(reminder.id)}
-            className="text-blue-600 text-sm hover:text-blue-700"
-          >
-            {isExpanded ? 'Show less' : 'Show more'}
-          </button>
+          {shouldShowToggle && (
+            <div
+              onClick={(e) => toggleExpanded(reminder.id, e)}
+              className="text-blue-600 text-sm hover:text-blue-700 cursor-pointer inline-block"
+            >
+              {isExpanded ? 'Show less' : 'Show more'}
+            </div>
+          )}
         </div>
       </div>
     );

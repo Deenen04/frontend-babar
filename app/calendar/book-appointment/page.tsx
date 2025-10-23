@@ -5,6 +5,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
   appointmentsApi,
   appointmentsUtils,
   appointmentTypesApi,
@@ -41,6 +48,7 @@ export default function BookAppointment() {
 
   // UI State
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(new Date());
+  const [showTimeSlotsModal, setShowTimeSlotsModal] = useState(false);
 
   const [bookingData, setBookingData] = useState<BookingData>({
     patientId: '',
@@ -123,8 +131,19 @@ export default function BookAppointment() {
 
       // Extract and format the start times
       const slots = availableAppointments.map(appointment => formatTimeTo12Hour(appointment.start_time));
+      
+      // Remove duplicates and sort
+      const uniqueSlots = [...new Set(slots)].sort((a, b) => {
+        const timeA = a.includes('am') ? 
+          (a.includes('12') ? 0 : parseInt(a.split(':')[0])) : 
+          (a.includes('12') ? 12 : parseInt(a.split(':')[0]) + 12);
+        const timeB = b.includes('am') ? 
+          (b.includes('12') ? 0 : parseInt(b.split(':')[0])) : 
+          (b.includes('12') ? 12 : parseInt(b.split(':')[0]) + 12);
+        return timeA - timeB;
+      });
 
-      setAvailableSlots(slots);
+      setAvailableSlots(uniqueSlots);
     } catch (err) {
       console.error('Error loading available slots:', err);
       setError('Failed to load available time slots.');
@@ -182,11 +201,14 @@ export default function BookAppointment() {
         ...prev,
         patientId,
         patientName: `${selectedPatient.first_name} ${selectedPatient.last_name}`,
-        contactNumber: selectedPatient.phone_number,
+        // Only populate contact number if it's empty (not manually entered)
+        contactNumber: prev.contactNumber || selectedPatient.phone_number,
         countryCode: selectedPatient.phone_extension || '+1',
-        dateOfBirth: selectedPatient.date_of_birth || '',
-        insuranceId: selectedPatient.insurance_id || '',
-        insuranceProvider: selectedPatient.insurance_provider || ''
+        // Only populate date of birth if it's empty
+        dateOfBirth: prev.dateOfBirth || (selectedPatient.date_of_birth || ''),
+        // Only populate insurance details if they're empty
+        insuranceId: prev.insuranceId || (selectedPatient.insurance_id || ''),
+        insuranceProvider: prev.insuranceProvider || (selectedPatient.insurance_provider || '')
       }));
     }
   };
@@ -364,8 +386,8 @@ export default function BookAppointment() {
                 <input
                   type="tel"
                   value={bookingData.contactNumber}
-                  readOnly
-                  className="flex-1 px-3 py-2 text-black border border-l-0 border-gray-300 rounded-r-md bg-gray-50"
+                  onChange={(e) => setBookingData(prev => ({ ...prev, contactNumber: e.target.value }))}
+                  className="flex-1 px-3 py-2 border border-l-0 border-gray-300 rounded-r-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 />
               </div>
             </div>
@@ -374,19 +396,12 @@ export default function BookAppointment() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Date of Birth *
               </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={bookingData.dateOfBirth}
-                  readOnly
-                  className="w-full px-3 py-2 text-black border border-gray-300 rounded-md bg-gray-50"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              </div>
+              <input
+                type="date"
+                value={bookingData.dateOfBirth}
+                onChange={(e) => setBookingData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+              />
             </div>
 
             <div>
@@ -396,8 +411,8 @@ export default function BookAppointment() {
               <input
                 type="text"
                 value={bookingData.insuranceId}
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                onChange={(e) => setBookingData(prev => ({ ...prev, insuranceId: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
               />
             </div>
 
@@ -408,8 +423,8 @@ export default function BookAppointment() {
               <input
                 type="text"
                 value={bookingData.insuranceProvider}
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                onChange={(e) => setBookingData(prev => ({ ...prev, insuranceProvider: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
               />
             </div>
 
@@ -430,7 +445,11 @@ export default function BookAppointment() {
               </label>
               <select
                 value={bookingData.appointmentTypeId}
-                onChange={(e) => setBookingData(prev => ({ ...prev, appointmentTypeId: e.target.value, selectedTime: '' }))}
+                onChange={(e) => {
+                  setBookingData(prev => ({ ...prev, appointmentTypeId: e.target.value, selectedTime: '' }));
+                  // Close modal if open
+                  setShowTimeSlotsModal(false);
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 disabled={loading}
               >
@@ -492,9 +511,17 @@ export default function BookAppointment() {
                   return (
                   <button
                       key={index}
-                    onClick={() => {
+                    onClick={async () => {
+                        if (!isCurrentMonth) return;
+
                         const newDate = new Date(date);
                         setBookingData(prev => ({ ...prev, selectedDate: newDate, selectedTime: '' }));
+
+                        // Load available slots and open modal
+                        if (bookingData.appointmentTypeId) {
+                          await loadAvailableSlots();
+                          setShowTimeSlotsModal(true);
+                        }
                     }}
                       disabled={!isCurrentMonth}
                     className={`w-8 h-8 text-sm rounded ${
@@ -514,61 +541,30 @@ export default function BookAppointment() {
               </div>
             </div>
 
-            {/* Available Slots */}
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">
-                Select Time Slot <span className="text-red-500">*</span>
-              </h4>
-              {bookingData.selectedDate ? (
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600">
-                    {bookingData.selectedDate.toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
+            {/* Selected Date and Time Display */}
+            {bookingData.selectedDate && (
+              <div className="mb-4 p-4 bg-gray-50 rounded-md">
+                <h4 className="font-medium text-gray-900 mb-2">Selected Appointment</h4>
+                <p className="text-sm text-gray-600">
+                  <strong>Date:</strong> {bookingData.selectedDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+                {bookingData.selectedTime && (
+                  <p className="text-sm text-green-600 font-medium mt-1">
+                    <strong>Time:</strong> {bookingData.selectedTime}
                   </p>
-                  {availableSlots.length > 0 && !bookingData.selectedTime && (
-                    <p className="text-sm text-primary font-medium mt-1">
-                      ⓘ Please select a time slot below
-                    </p>
-                  )}
-                  {bookingData.selectedTime && (
-                    <p className="text-sm text-green-600 font-medium mt-1">
-                      ✓ Selected: {bookingData.selectedTime}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-600 mb-4">Please select a date</p>
-              )}
-              
-              <div className="grid grid-cols-3 gap-2">
-                {availableSlots.length > 0 ? (
-                  availableSlots.map(slot => (
-                  <button
-                    key={slot}
-                    onClick={() => setBookingData(prev => ({ ...prev, selectedTime: slot }))}
-                    className={`px-3 py-2 text-sm border rounded-md transition-all ${
-                      bookingData.selectedTime === slot
-                        ? 'border-primary bg-primary text-white shadow-md'
-                        : 'border-gray-300 text-gray-700 hover:border-primary hover:bg-primary hover:bg-opacity-10'
-                    }`}
-                  >
-                    {slot}
-                  </button>
-                  ))
-                ) : (
-                  <p className="col-span-3 text-sm text-gray-500 text-center py-4">
-                    {bookingData.selectedDate && bookingData.appointmentTypeId
-                      ? 'No schedule available for this date'
-                      : 'Select an appointment type and date to see available slots'
-                    }
+                )}
+                {!bookingData.selectedTime && (
+                  <p className="text-sm text-primary font-medium mt-1">
+                    Click on a date above to select a time slot
                   </p>
                 )}
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -590,6 +586,65 @@ export default function BookAppointment() {
         </div>
         </div>
       )}
+
+      {/* Time Slots Modal */}
+      <Dialog open={showTimeSlotsModal} onOpenChange={setShowTimeSlotsModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Time Slot</DialogTitle>
+            <DialogDescription>
+              Choose an available time for your appointment on{' '}
+              {bookingData.selectedDate?.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+              })}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {availableSlots.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+                {availableSlots.map((slot, index) => (
+                  <button
+                    key={`${slot}-${index}`}
+                    onClick={() => {
+                      setBookingData(prev => ({ ...prev, selectedTime: slot }));
+                      setShowTimeSlotsModal(false);
+                    }}
+                    className={`px-3 py-2 text-sm border rounded-md hover:border-primary hover:bg-primary hover:bg-opacity-10 transition-all text-center ${
+                      bookingData.selectedTime === slot
+                        ? 'border-primary bg-primary text-white'
+                        : 'border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    {slot}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500">
+                  No time slots available for this date.
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Try selecting a different date or appointment type.
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <button
+                onClick={() => setShowTimeSlotsModal(false)}
+                className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
     </DashboardLayout>
   );
