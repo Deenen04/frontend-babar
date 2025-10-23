@@ -11,7 +11,6 @@ import {
   AppointmentType,
   CreateAppointmentRequest
 } from '@/lib/api/appointments';
-import { practitionersApi, practitionersUtils, Practitioner } from '@/lib/api/practitioners';
 import { patientsApi, patientsUtils, Patient as APIPatient } from '@/lib/api/patients';
 import { workingHoursApi, workingHoursUtils } from '@/lib/api/working-hours';
 
@@ -33,7 +32,6 @@ export default function BookAppointment() {
   const router = useRouter();
 
   // API Data State
-  const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
   const [appointmentTypes, setAppointmentTypes] = useState<AppointmentType[]>([]);
   const [patients, setPatients] = useState<APIPatient[]>([]);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -65,10 +63,6 @@ export default function BookAppointment() {
       setError(null);
 
       try {
-        // Load practitioners
-        const practitionersData = await practitionersApi.getActivePractitioners();
-        setPractitioners(practitionersData);
-
         // Load appointment types
         const appointmentTypesData = await appointmentTypesApi.getAppointmentTypes();
         setAppointmentTypes(appointmentTypesData);
@@ -78,9 +72,6 @@ export default function BookAppointment() {
         setPatients(patientsData);
 
         // Set default values if data is available
-        if (practitionersData.length > 0) {
-          setBookingData(prev => ({ ...prev, practitionerId: practitionersData[0].id }));
-        }
         if (appointmentTypesData.length > 0) {
           setBookingData(prev => ({ ...prev, appointmentTypeId: appointmentTypesData[0].id }));
         }
@@ -96,18 +87,18 @@ export default function BookAppointment() {
     loadInitialData();
   }, []);
 
-  // Load available slots when practitioner or date changes
+  // Load available slots when date or appointment type changes
   useEffect(() => {
-    if (bookingData.practitionerId && bookingData.selectedDate && bookingData.appointmentTypeId) {
+    if (bookingData.selectedDate && bookingData.appointmentTypeId) {
       loadAvailableSlots();
     } else {
       setAvailableSlots([]);
     }
-  }, [bookingData.practitionerId, bookingData.selectedDate, bookingData.appointmentTypeId]);
+  }, [bookingData.selectedDate, bookingData.appointmentTypeId]);
 
-  // Load available time slots for selected practitioner and date
+  // Load available time slots for selected date and appointment type
   const loadAvailableSlots = async () => {
-    if (!bookingData.practitionerId || !bookingData.selectedDate || !bookingData.appointmentTypeId) {
+    if (!bookingData.selectedDate || !bookingData.appointmentTypeId) {
       setAvailableSlots([]);
       return;
     }
@@ -115,23 +106,20 @@ export default function BookAppointment() {
     try {
       setError(null);
 
-      // Get appointments for the selected date
+      // Get available slots using the API with proper filters
       const dateString = bookingData.selectedDate.toISOString().split('T')[0];
-      const appointmentsForDate = await appointmentsApi.getByDate(dateString);
+      const availableAppointments = await appointmentsApi.getAppointments({
+        status: 'available',
+        date: dateString,
+        appointment_type_id: bookingData.appointmentTypeId
+      });
 
-      // Ensure appointmentsForDate is an array before filtering
-      if (!Array.isArray(appointmentsForDate)) {
-        console.warn('Appointments data is not an array:', appointmentsForDate);
+      // Ensure availableAppointments is an array
+      if (!Array.isArray(availableAppointments)) {
+        console.warn('Available appointments data is not an array:', availableAppointments);
         setAvailableSlots([]);
         return;
       }
-
-      // Filter for available slots for the selected practitioner and appointment type
-      const availableAppointments = appointmentsForDate.filter(appointment =>
-        appointment.practitioner_id === bookingData.practitionerId &&
-        appointment.appointment_type_id === bookingData.appointmentTypeId &&
-        appointment.status === 'available'
-      );
 
       // Extract and format the start times
       const slots = availableAppointments.map(appointment => formatTimeTo12Hour(appointment.start_time));
@@ -228,10 +216,6 @@ export default function BookAppointment() {
       return;
     }
 
-    if (!bookingData.practitionerId) {
-      setError('Please select a practitioner.');
-      return;
-    }
 
     setSaving(true);
     setError(null);
@@ -249,12 +233,12 @@ export default function BookAppointment() {
       const appointmentData: CreateAppointmentRequest = {
         patient_phone: bookingData.contactNumber,
         patient_name: bookingData.patientName,
-        practitioner_id: bookingData.practitionerId,
+        practitioner_id: 'default-practitioner', // Default practitioner since we removed practitioner selection
         appointment_type_id: bookingData.appointmentTypeId,
         appointment_date: bookingData.selectedDate.toISOString().split('T')[0],
         start_time: startTime24h,
         end_time: endTime24h,
-        status: 'scheduled',
+        status: 'confirmed',
         notes: '',
         created_by: 'user-123'
       };
@@ -438,25 +422,6 @@ export default function BookAppointment() {
           <div className="w-1/2 p-6 border-l border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Select Date and Time</h3>
 
-            {/* Practitioner Selection */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Practitioner *
-              </label>
-              <select
-                value={bookingData.practitionerId}
-                onChange={(e) => setBookingData(prev => ({ ...prev, practitionerId: e.target.value, selectedTime: '' }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                disabled={loading}
-              >
-                <option value="">Select a practitioner</option>
-                {practitioners.map(practitioner => (
-                  <option key={practitioner.id} value={practitioner.id}>
-                    {practitioner.title} {practitioner.first_name} {practitioner.last_name} - {practitioner.specialization}
-                  </option>
-                ))}
-              </select>
-            </div>
 
             {/* Appointment Type Selection */}
             <div className="mb-4">
@@ -596,9 +561,9 @@ export default function BookAppointment() {
                   ))
                 ) : (
                   <p className="col-span-3 text-sm text-gray-500 text-center py-4">
-                    {bookingData.practitionerId && bookingData.selectedDate && bookingData.appointmentTypeId
+                    {bookingData.selectedDate && bookingData.appointmentTypeId
                       ? 'No schedule available for this date'
-                      : 'Select a practitioner, appointment type, and date to see available slots'
+                      : 'Select an appointment type and date to see available slots'
                     }
                   </p>
                 )}

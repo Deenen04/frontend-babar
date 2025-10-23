@@ -6,7 +6,6 @@ import Link from 'next/link';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import { appointmentsApi, Appointment } from '../lib/api/appointments';
-import { practitionersApi, Practitioner } from '../lib/api/practitioners';
 import { settingsApi } from '../lib/api/settings';
 
 interface DashboardLayoutProps {
@@ -18,31 +17,27 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
   const pathname = usePathname();
   const isDashboard = pathname === '/dashboard';
 
-  // State for appointments and practitioners
+  // State for appointments
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
   const [clinicName, setClinicName] = useState<string>('CiniBot Clinic');
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(false);
   const [appointmentError, setAppointmentError] = useState<string | null>(null);
-  const [isLoadingPractitioners, setIsLoadingPractitioners] = useState(false);
 
-  // Fetch today's appointments and practitioners
+  // Fetch today's appointments
   useEffect(() => {
     const fetchTodayData = async () => {
       if (!isDashboard) return;
 
       try {
         setIsLoadingAppointments(true);
-        setIsLoadingPractitioners(true);
         setAppointmentError(null);
 
         // Get today's date in YYYY-MM-DD format
         const today = new Date().toISOString().split('T')[0];
 
-        // Fetch appointments for today, practitioners, and clinic name in parallel
-        const [allTodayAppointments, allPractitioners, systemSettings] = await Promise.all([
+        // Fetch appointments for today and clinic name in parallel
+        const [allTodayAppointments, systemSettings] = await Promise.all([
           appointmentsApi.getByDate(today),
-          practitionersApi.getPractitioners(),
           settingsApi.getSystemConfig().catch(() => []) // Fallback to empty array if settings fail
         ]);
 
@@ -59,7 +54,6 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
         console.log('Appointments length:', bookedAppointments.length);
 
         setAppointments(bookedAppointments);
-        setPractitioners(allPractitioners);
 
         // Set clinic name from system settings or use default
         const clinicSetting = systemSettings.find(setting => setting.setting_key === 'clinic_name');
@@ -71,18 +65,12 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
         setAppointmentError('Failed to load today\'s appointments');
       } finally {
         setIsLoadingAppointments(false);
-        setIsLoadingPractitioners(false);
       }
     };
 
     fetchTodayData();
   }, [isDashboard]);
 
-  // Helper function to get practitioner name by ID
-  const getPractitionerName = (practitionerId: string) => {
-    const practitioner = practitioners.find(p => p.id === practitionerId);
-    return practitioner ? `${practitioner.title} ${practitioner.first_name} ${practitioner.last_name}` : 'Unknown Doctor';
-  };
 
   // Helper function to format time
   const formatTime = (time: string) => {
@@ -159,7 +147,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <p className="font-medium text-gray-900">
-                              {getPractitionerName(appointment.practitioner_id)}
+                              {appointment.patient_name || 'Appointment'}
                             </p>
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                               isBooked
@@ -182,9 +170,6 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                           )}
                         </div>
                       </div>
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
                     </div>
                   );
                 })

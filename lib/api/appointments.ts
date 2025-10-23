@@ -69,6 +69,7 @@ export interface AppointmentQueryParams {
   status?: string;
   patient_phone?: string;
   practitioner_id?: string;
+  appointment_type_id?: string;
   date?: string;
   page?: number;
   limit?: number;
@@ -141,7 +142,7 @@ export const appointmentsApi = {
 
   // Get appointments by date
   getByDate: async (date: string, params?: Omit<AppointmentQueryParams, 'date'>): Promise<Appointment[]> => {
-    return await appointmentsApi.getAppointments({ ...params, date });
+    return await appointmentsApi.getAppointments({ ...params, date, status: 'confirmed' });
   },
 
   // Get appointments by practitioner
@@ -152,6 +153,17 @@ export const appointmentsApi = {
   // Get appointments by patient phone
   getByPatientPhone: async (phoneNumber: string, params?: Omit<AppointmentQueryParams, 'patient_phone'>): Promise<Appointment[]> => {
     return await appointmentsApi.getAppointments({ ...params, patient_phone: phoneNumber });
+  },
+
+  // Get available slots for a specific practitioner and date
+  getAvailableSlots: async (practitionerId: string, appointmentDate: string, appointmentTypeId?: string): Promise<Appointment[]> => {
+    const params: AppointmentQueryParams = {
+      status: 'available',
+      practitioner_id: practitionerId,
+      date: appointmentDate
+    };
+    
+    return await appointmentsApi.getAppointments(params);
   },
 
   // Get upcoming appointments
