@@ -211,7 +211,7 @@ export const patientsUtils = {
   // Update patient from form data
   updateFromForm: async (patientId: string, formData: any) => {
     try {
-      return await patientsApi.update(patientId, {
+      return await patientsApi.patch(patientId, {
         first_name: formData.first_name,
         last_name: formData.last_name,
         date_of_birth: formData.dateOfBirth || null,
