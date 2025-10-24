@@ -106,10 +106,6 @@ function RemindersContent() {
     }
   };
 
-  // Reminders are already filtered by the API, so just return them
-  const filteredReminders = reminders;
-
-
   const scrollPositionRef = useRef<number>(0);
 
   const toggleExpanded = useCallback((reminderId: string, event: React.MouseEvent) => {
@@ -341,7 +337,7 @@ function RemindersContent() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[...Array(6)].map((_, index) => (
-              <div key={index} className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
+              <div key={`skeleton-${index}`} className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
                 <div className="flex items-start justify-between mb-3">
                   <div className="h-4 bg-gray-200 rounded w-1/3"></div>
                   <div className="h-8 bg-gray-200 rounded w-20"></div>
@@ -360,13 +356,13 @@ function RemindersContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredReminders.map((reminder) => (
-              <ReminderCard key={reminder.id} reminder={reminder} />
+            {reminders.map((reminder,index) => (
+              <ReminderCard key={index} reminder={reminder} />
             ))}
           </div>
         )}
 
-        {!loading && filteredReminders.length === 0 && (
+        {!loading && reminders.length === 0 && (
           <div className="text-center py-12">
             <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
